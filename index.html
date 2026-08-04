@@ -77,17 +77,6 @@ body {
 }
 .search-btn:hover { opacity: 0.85; }
 
-.theme-toggle {
-  background: var(--card);
-  border: 1px solid var(--card-border);
-  border-radius: 20px;
-  padding: 6px 14px;
-  font-size: 14px;
-  cursor: pointer;
-  color: var(--text);
-}
-.theme-toggle:hover { border-color: var(--accent); }
-
 .type-tabs {
   display: flex; gap: 6px;
   background: var(--card);
@@ -263,7 +252,6 @@ body {
   .type-tab { padding: 3px 8px; font-size: 11px; border-radius: 10px; }
   .search-box { width: 100px; font-size: 12px; padding: 5px 10px; }
   .search-btn { font-size: 11px; padding: 5px 10px; border-radius: 12px; }
-  .theme-toggle { font-size: 11px; padding: 4px 8px; }
   
   /* 堆叠布局 */
   .main { flex-direction: column; max-width: 100%; }
@@ -414,7 +402,6 @@ mark { background: #f2d98c; color: #3a342a; padding: 0 2px; border-radius: 3px; 
     </div>
     <input class="search-box" id="searchBox" type="text" placeholder="🔍 搜索日报内容...">
     <button class="search-btn" id="searchBtn">搜索</button>
-    <button class="theme-toggle" id="themeToggle">🌙 深色</button>
   </div>
 </div>
 
@@ -786,22 +773,8 @@ document.getElementById("typeTabs").addEventListener("click", e => {
   renderContent();
 });
 
-// ===== 主题切换 =====
-document.getElementById("themeToggle").addEventListener("click", () => {
-  const current = document.documentElement.dataset.theme;
-  const next = current === "dark" ? "light" : "dark";
-  document.documentElement.dataset.theme = next;
-  document.getElementById("themeToggle").textContent = next === "dark" ? "☀️ 浅色" : "🌙 深色";
-  localStorage.setItem("theme", next);
-});
-
 // ===== 初始化 =====
 (function init() {
-  const savedTheme = localStorage.getItem("theme");
-  if (savedTheme === "dark") {
-    document.documentElement.dataset.theme = "dark";
-    document.getElementById("themeToggle").textContent = "☀️ 浅色";
-  }
   const today = new Date();
   calStartMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   const dates = getDates();
