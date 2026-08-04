@@ -424,9 +424,23 @@ function renderContent() {
     const q = searchQuery.toLowerCase();
     reports = reports.filter(r => {
       const t = r.content.toLowerCase();
-      // 模糊匹配：支持空格分隔多关键词，部分匹配
+      // 空格分关键词
       const keywords = q.split(/\s+/).filter(k => k);
-      return keywords.length === 0 || keywords.some(k => t.includes(k));
+      if (keywords.length === 0) return true;
+      // 每个关键词：子串匹配 OR 逐字匹配（中文无空格场景）
+      return keywords.every(kw => {
+        if (t.includes(kw)) return true;
+        // 中文逐字匹配：把关键词拆成单字，检查是否按序出现在内容中
+        const chars = [...kw].filter(c => /[\u4e00-\u9fff]/.test(c)); // 仅中文字
+        if (chars.length < 2) return false;
+        let pos = 0;
+        for (const ch of chars) {
+          pos = t.indexOf(ch, pos);
+          if (pos === -1) return false;
+          pos++;
+        }
+        return true;
+      });
     });
     currentDate = null;
   }
