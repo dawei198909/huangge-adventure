@@ -409,6 +409,9 @@ function renderCalendar() {
   strip.querySelectorAll(".cal-dot:not(.empty)").forEach(el => {
     el.addEventListener("click", () => {
       currentDate = el.dataset.date;
+      currentType = null;  // 日期跳转时清除类型筛选
+      document.querySelectorAll(".type-tab").forEach(t => t.classList.remove("active"));
+      searchQuery = ""; document.getElementById("searchBox").value = "";
       renderCalendar();
       renderContent();
     });
