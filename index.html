@@ -489,6 +489,9 @@ document.getElementById("typeTabs").addEventListener("click", e => {
   document.querySelectorAll(".type-tab").forEach(t => t.classList.remove("active"));
   tab.classList.add("active");
   currentType = tab.dataset.type;
+  if (currentType === "all") currentDate = getDates()[0];  // 恢复最新日期
+  else currentDate = null;  // 类型筛选时清除日期过滤
+  renderDates();
   renderContent();
 });
 
