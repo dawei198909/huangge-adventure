@@ -197,7 +197,7 @@ body {
 .report-body h2 { font-size: 19px; font-weight: 600; color: var(--accent); line-height: 1.45; cursor: pointer; display: flex; align-items: center; gap: 8px; }
 .report-body h2:hover { opacity: 0.8; }
 .report-body h2::after {
-  content: "▾"; font-size: 12px; transition: transform 0.2s; color: var(--text-soft); margin-left: auto;
+  content: "▾"; font-size: 18px; font-weight: 700; transition: transform 0.2s; color: var(--accent); margin-left: auto;
 }
 .report-body h2.collapsed::after { transform: rotate(-90deg); }
 .section-body { transition: max-height 0.3s ease, opacity 0.3s; overflow: hidden; }
@@ -297,14 +297,7 @@ mark { background: #f2d98c; color: #3a342a; padding: 0 2px; border-radius: 3px; 
 </div>
 
 <div class="main">
-  <aside class="sidebar">
-    <div class="cal-nav-row">
-      <button id="prevMonth" title="上月">◀</button>
-      <span class="cal-year-label" id="calYearLabel"></span>
-      <button id="nextMonth" title="下月">▶</button>
-    </div>
-    <div class="cal-month-strip" id="calMonthStrip"></div>
-  </aside>
+  <aside class="sidebar" id="dateList"></aside>
   <main class="content" id="content"></main>
 </div>
 
