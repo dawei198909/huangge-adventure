@@ -19,7 +19,9 @@
   --shadow: rgba(120, 100, 60, 0.08);
   --tag-money: #b07d3e;
   --tag-frontier: #5d7b6f;
+  --tag-apps: #4a7fb5;
 }
+
 [data-theme="dark"] {
   --bg: #1f1d19;
   --bg-soft: #28251f;
@@ -101,56 +103,57 @@ body {
   max-width: 1240px; margin: 0 auto;
 }
 
-/* 侧边日期列表 — 按月折叠 */
+/* 侧边日历 — 小格子矩阵 */
 .sidebar {
-  width: 210px; flex-shrink: 0;
+  width: 200px; flex-shrink: 0;
   border-right: 1px solid var(--card-border);
-  padding: 16px 12px;
+  padding: 12px 10px;
   background: var(--bg-soft);
   position: sticky; top: 62px;
   height: calc(100vh - 62px);
   overflow-y: auto;
+  display: flex; flex-direction: column; align-items: center;
 }
-.month-group { margin-bottom: 4px; }
-.month-head {
-  display: flex; align-items: center; gap: 6px;
-  padding: 7px 8px; border-radius: 8px;
-  cursor: pointer; font-size: 13px; font-weight: 600;
-  color: var(--text); user-select: none;
-  transition: background 0.15s;
+.cal-nav-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px;
 }
-.month-head:hover { background: var(--card); }
-.month-head .arrow {
-  font-size: 10px; transition: transform 0.2s;
-  color: var(--text-soft); width: 14px; text-align: center;
+.cal-nav-row button {
+  width: 22px; height: 22px; border: none; border-radius: 4px;
+  background: var(--card); color: var(--text); cursor: pointer;
+  font-size: 11px; display: flex; align-items: center; justify-content: center;
 }
-.month-head.open .arrow { transform: rotate(90deg); }
-.month-head .count { margin-left: auto; font-size: 11px; color: var(--text-soft); }
-.date-list { list-style: none; overflow: hidden; max-height: 0; transition: max-height 0.25s; }
-.date-list.open { max-height: 600px; }
-.date-item {
-  display: flex; align-items: center; gap: 6px;
-  padding: 5px 8px 5px 22px; border-radius: 6px;
-  cursor: pointer; font-size: 13px; color: var(--text);
-  transition: background 0.15s;
+.cal-nav-row button:hover { background: var(--accent-soft); }
+.cal-nav-row .cal-year-label {
+  font-size: 12px; font-weight: 700; color: var(--text);
+  min-width: 50px; text-align: center;
 }
-.date-item:hover { background: var(--card); }
-.date-item.active { background: var(--accent-soft); font-weight: 600; }
-.date-item .dot {
-  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+.cal-month-strip { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.cal-month-label {
+  font-size: 11px; font-weight: 600; color: var(--text-soft);
+  text-align: center; margin-top: 2px;
 }
-.date-item .dot.money { background: var(--tag-money); }
-.date-item .dot.frontier { background: var(--tag-frontier); }
-.date-item .dot.both {
-  background: linear-gradient(135deg, var(--tag-money) 50%, var(--tag-frontier) 50%);
+.cal-week-row { display: flex; gap: 2px; justify-content: center; }
+.cal-dot {
+  width: 15px; height: 15px; border-radius: 3px;
+  background: var(--card);
+  cursor: pointer; position: relative;
+  transition: background 0.15s, transform 0.1s;
 }
-.date-item .label { flex: 1; }
-.date-item .item-count { font-size: 11px; color: var(--text-soft); }
-.date-item .today-tag {
-  font-size: 9px; font-weight: 600; color: #fff;
-  background: #5d9b6f; border-radius: 6px;
-  padding: 1px 5px;
+.cal-dot:hover { transform: scale(1.25); z-index: 2; }
+.cal-dot.empty { background: transparent; cursor: default; }
+.cal-dot.empty:hover { transform: none; }
+.cal-dot.today { border: 2px solid var(--accent); }
+.cal-dot.has-report { background: var(--accent); opacity: 0.7; }
+.cal-dot.has-report.today { opacity: 1; box-shadow: 0 0 5px rgba(176,125,62,0.4); }
+.cal-dot .tooltip {
+  display: none; position: absolute;
+  bottom: 130%; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: var(--bg);
+  padding: 2px 6px; border-radius: 4px;
+  font-size: 10px; white-space: nowrap; pointer-events: none; z-index: 10;
 }
+.cal-dot:hover .tooltip { display: block; }
 
 /* 内容区 */
 .content { flex: 1; padding: 32px 36px; max-width: 920px; }
@@ -171,10 +174,12 @@ body {
 }
 .report-card.money { border-left: 4px solid var(--tag-money); }
 .report-card.frontier { border-left: 4px solid var(--tag-frontier); }
+.report-card.apps { border-left: 4px solid var(--tag-apps); }
 .report-head {
   display: flex; align-items: center; gap: 12px;
   margin-bottom: 0; flex-wrap: wrap;
   padding: 22px 30px 0 30px;
+  cursor: pointer;
 }
 .report-head .type-badge {
   padding: 3px 12px; border-radius: 12px;
@@ -189,7 +194,14 @@ body {
 
 .report-body h1, .report-body h2 { margin: 28px 0 12px; }
 .report-body h1 { font-size: 26px; font-weight: 700; line-height: 1.35; }
-.report-body h2 { font-size: 19px; font-weight: 600; color: var(--accent); line-height: 1.45; }
+.report-body h2 { font-size: 19px; font-weight: 600; color: var(--accent); line-height: 1.45; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.report-body h2:hover { opacity: 0.8; }
+.report-body h2::after {
+  content: "▾"; font-size: 12px; transition: transform 0.2s; color: var(--text-soft); margin-left: auto;
+}
+.report-body h2.collapsed::after { transform: rotate(-90deg); }
+.section-body { transition: max-height 0.3s ease, opacity 0.3s; overflow: hidden; }
+.section-body.hidden { max-height: 0; opacity: 0; }
 .report-body h3 { font-size: 16px; margin: 20px 0 8px; font-weight: 600; }
 .report-body p { margin: 8px 0; font-size: 15px; line-height: 1.85; }
 .report-body ul, .report-body ol { margin: 10px 0 10px 24px; font-size: 15px; line-height: 1.85; }
@@ -275,8 +287,9 @@ mark { background: #f2d98c; color: #3a342a; padding: 0 2px; border-radius: 3px; 
   <div class="header-actions">
     <div class="type-tabs" id="typeTabs">
       <button class="type-tab active" data-type="all">全部</button>
-      <button class="type-tab" data-type="money">💰 赚钱案例</button>
-      <button class="type-tab" data-type="frontier">📡 前沿情报</button>
+      <button class="type-tab" data-type="money">💰 赚钱</button>
+      <button class="type-tab" data-type="apps">🔧 应用</button>
+      <button class="type-tab" data-type="frontier">📡 前沿</button>
     </div>
     <input class="search-box" id="searchBox" type="text" placeholder="🔍 搜索日报内容...">
     <button class="theme-toggle" id="themeToggle">🌙 深色</button>
@@ -284,7 +297,14 @@ mark { background: #f2d98c; color: #3a342a; padding: 0 2px; border-radius: 3px; 
 </div>
 
 <div class="main">
-  <aside class="sidebar" id="dateList"></aside>
+  <aside class="sidebar">
+    <div class="cal-nav-row">
+      <button id="prevMonth" title="上月">◀</button>
+      <span class="cal-year-label" id="calYearLabel"></span>
+      <button id="nextMonth" title="下月">▶</button>
+    </div>
+    <div class="cal-month-strip" id="calMonthStrip"></div>
+  </aside>
   <main class="content" id="content"></main>
 </div>
 
@@ -424,17 +444,49 @@ function renderContent() {
   
   const dates = Object.keys(byDate).sort().reverse();
   container.innerHTML = dates.map(d => {
-    return byDate[d].map(r => `
+    return byDate[d].map(r => {
+      const badgeText = r.type === "money" ? "💰 赚钱案例" : (r.type === "frontier" ? "📡 前沿情报" : "🔧 应用场景");
+      return `
       <article class="report-card ${r.type}" data-date="${r.date}" data-type="${r.type}">
         <div class="report-head">
-          <span class="type-badge ${r.type}">${r.type === "money" ? "💰 赚钱案例" : "📡 前沿情报"}</span>
+          <span class="type-badge ${r.type}">${badgeText}</span>
           <span class="report-date">${r.date}</span>
           <span class="report-file">${escapeHtml(r.filename)}</span>
         </div>
         <div class="report-body">${r.html}</div>
-      </article>
-    `).join("");
+      </article>`;
+    }).join("");
   }).join("");
+
+  // ===== 可折叠标题 =====
+  container.querySelectorAll(".report-body").forEach(body => {
+    const h2s = body.querySelectorAll("h2");
+    h2s.forEach(h2 => {
+      h2.addEventListener("click", () => {
+        h2.classList.toggle("collapsed");
+        // 折叠接下来直到下一个 h2 的内容
+        let next = h2.nextElementSibling;
+        while (next && next.tagName !== "H2") {
+          if (next.classList.contains("section-body")) {
+            next.classList.toggle("hidden");
+          }
+          next = next.nextElementSibling;
+        }
+      });
+    });
+    // 首次加载时把每个 h2 后面的内容包起来
+    h2s.forEach(h2 => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "section-body";
+      let next = h2.nextElementSibling;
+      while (next && next.tagName !== "H2") {
+        const toMove = next;
+        next = next.nextElementSibling;
+        wrapper.appendChild(toMove);
+      }
+      h2.parentNode.insertBefore(wrapper, h2.nextElementSibling || h2.nextSibling);
+    });
+  });
 }
 
 // ===== 事件 =====
