@@ -70,6 +70,12 @@ body {
 }
 .search-box:focus { border-color: var(--accent); }
 .search-box::placeholder { color: var(--text-soft); }
+.search-btn {
+  background: var(--accent); color: #fff; border: none;
+  border-radius: 16px; padding: 5px 14px; font-size: 13px; cursor: pointer;
+  transition: opacity 0.2s;
+}
+.search-btn:hover { opacity: 0.85; }
 
 .theme-toggle {
   background: var(--card);
@@ -293,6 +299,7 @@ mark { background: #f2d98c; color: #3a342a; padding: 0 2px; border-radius: 3px; 
       <button class="type-tab" data-type="frontier">📡 前沿</button>
     </div>
     <input class="search-box" id="searchBox" type="text" placeholder="🔍 搜索日报内容...">
+    <button class="search-btn" id="searchBtn">搜索</button>
     <button class="theme-toggle" id="themeToggle">🌙 深色</button>
   </div>
 </div>
@@ -414,8 +421,13 @@ function renderContent() {
   if (currentType) reports = reports.filter(r => r.type === currentType);
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
-    reports = reports.filter(r => r.content.toLowerCase().includes(q));
-    currentDate = null;  // 搜索时显示所有日期
+    reports = reports.filter(r => {
+      const t = r.content.toLowerCase();
+      // 模糊匹配：支持空格分隔多关键词，部分匹配
+      const keywords = q.split(/\s+/).filter(k => k);
+      return keywords.length === 0 || keywords.some(k => t.includes(k));
+    });
+    currentDate = null;
   }
   
   if (reports.length === 0) {
@@ -480,7 +492,21 @@ function renderContent() {
   });
 }
 
-// ===== 事件 =====
+// ===== 搜索 =====
+function doSearch() {
+  searchQuery = document.getElementById("searchBox").value.trim();
+  currentType = null;
+  document.querySelectorAll(".type-tab").forEach(t => t.classList.remove("active"));
+  renderCalendar();
+  renderContent();
+}
+
+document.getElementById("searchBtn").addEventListener("click", doSearch);
+document.getElementById("searchBox").addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); doSearch(); }
+});
+
+// ===== 类型切换 =====
 document.getElementById("typeTabs").addEventListener("click", e => {
   const tab = e.target.closest(".type-tab");
   if (!tab) return;
@@ -500,16 +526,7 @@ document.getElementById("typeTabs").addEventListener("click", e => {
   renderContent();
 });
 
-let searchTimer;
-document.getElementById("searchBox").addEventListener("input", e => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    searchQuery = e.target.value.trim();
-    renderCalendar();
-    renderContent();
-  }, 250);
-});
-
+// ===== 主题切换 =====
 document.getElementById("themeToggle").addEventListener("click", () => {
   const current = document.documentElement.dataset.theme;
   const next = current === "dark" ? "light" : "dark";
