@@ -109,8 +109,8 @@ body {
   max-width: 1240px; margin: 0 auto;
 }
 
-/* 侧边日历 — 小格子矩阵 */
-.sidebar {
+/* 侧边日历 — 小格子矩阵（桌面端） */
+.sidebar.desktop-only {
   width: 200px; flex-shrink: 0;
   border-right: 1px solid var(--card-border);
   padding: 12px 10px;
@@ -119,6 +119,16 @@ body {
   height: calc(100vh - 62px);
   overflow-y: auto;
   display: flex; flex-direction: column; align-items: center;
+}
+
+/* 侧边日期列表（手机端，默认隐藏） */
+.sidebar:not(.desktop-only) {
+  display: none;
+  width: 100%; flex-shrink: 0;
+  border-bottom: 1px solid var(--card-border);
+  padding: 8px 12px;
+  background: var(--bg-soft);
+  max-height: 50vh; overflow-y: auto;
 }
 .cal-nav-row {
   display: flex; align-items: center; gap: 8px;
@@ -258,28 +268,37 @@ body {
   /* 堆叠布局 */
   .main { flex-direction: column; max-width: 100%; }
   
-  /* 侧边栏 → 顶部横向日期条 */
-  .sidebar {
-    width: 100%; position: static; height: auto; overflow-x: auto;
-    border-right: none; border-bottom: 1px solid var(--card-border);
-    padding: 6px 4px; flex-shrink: 0;
-    flex-direction: row; flex-wrap: nowrap; gap: 2px;
-    white-space: nowrap; -webkit-overflow-scrolling: touch;
-    align-items: flex-start;
+  /* 侧边栏 → 顶部横向日期条（桌面版格子隐藏） */
+  .sidebar.desktop-only { display: none !important; }
+  .sidebar:not(.desktop-only) { display: block; }
+
+  /* 按月折叠列表 */
+  .month-group { margin-bottom: 4px; }
+  .month-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px; cursor: pointer; border-radius: 8px;
+    background: var(--card); font-size: 14px; font-weight: 600;
+    border: 1px solid var(--card-border);
   }
-  .cal-nav-row { width: 100%; justify-content: center; margin-bottom: 4px; }
-  .cal-nav-row button { width: 26px; height: 26px; font-size: 13px; }
-  .cal-year-label { font-size: 12px; }
-  .cal-month-strip {
-    display: flex; flex-direction: row; gap: 2px; align-items: center;
+  .month-head .arrow { transition: transform 0.2s; font-size: 10px; }
+  .month-head.open .arrow { transform: rotate(90deg); }
+  .month-head .count { margin-left: auto; font-size: 12px; color: var(--text-soft); }
+  .date-list { display: none; list-style: none; padding: 4px 0 4px 8px; margin: 0; }
+  .date-list.open { display: block; }
+  .date-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; cursor: pointer; border-radius: 6px;
+    font-size: 14px; transition: background 0.15s;
   }
-  .cal-month-label {
-    font-size: 9px; writing-mode: vertical-lr; margin: 0 3px;
-    white-space: nowrap;
-  }
-  .cal-week-row { display: flex; flex-direction: column; gap: 3px; }
-  .cal-dot { width: 20px !important; height: 20px !important; }
-  .cal-dot .tooltip { font-size: 10px; top: auto; bottom: 120%; transform: translateX(-50%); }
+  .date-item:hover, .date-item.active { background: var(--accent-soft); }
+  .date-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .date-item .dot.money { background: var(--tag-money); }
+  .date-item .dot.frontier { background: var(--tag-frontier); }
+  .date-item .dot.apps { background: var(--tag-apps); }
+  .date-item .dot.both { background: linear-gradient(135deg, var(--tag-money) 50%, var(--tag-frontier) 50%); }
+  .date-item .label { flex: 1; }
+  .date-item .today-tag { font-size: 10px; color: #4a9; font-weight: 600; }
+  .date-item .item-count { font-size: 12px; color: var(--text-soft); }
   
   /* 内容区全宽 */
   .content { padding: 8px 8px 80px; max-width: 100%; }
@@ -400,7 +419,8 @@ mark { background: #f2d98c; color: #3a342a; padding: 0 2px; border-radius: 3px; 
 </div>
 
 <div class="main">
-  <aside class="sidebar">
+  <aside class="sidebar" id="dateList"></aside>
+  <aside class="sidebar desktop-only" id="desktopSidebar">
     <div class="cal-nav-row">
       <button id="prevMonth" title="上月">◀</button>
       <span class="cal-year-label" id="calYearLabel"></span>
@@ -510,6 +530,7 @@ function renderCalendar() {
       const lastVisit = localStorage.getItem("lastVisitDate") || "";
       if (el.dataset.date > lastVisit) localStorage.setItem("lastVisitDate", todayStr);
       renderCalendar();
+      renderMobileDates();
       renderContent();
     });
   });
@@ -518,6 +539,72 @@ function renderCalendar() {
   const lastVisit = localStorage.getItem("lastVisitDate") || "";
   strip.querySelectorAll(`.cal-dot[data-date]`).forEach(el => {
     if (el.dataset.date > lastVisit && el.dataset.has === "1") el.classList.add("unread");
+  });
+}
+
+// ===== 手机版：按月折叠日期列表 =====
+function renderMobileDates() {
+  const list = document.getElementById("dateList");
+  const today = new Date().toISOString().slice(0, 10);
+  const byMonth = {};
+  REPORTS.forEach(r => {
+    const m = r.date.slice(0, 7);
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(r);
+  });
+  const months = Object.keys(byMonth).sort().reverse();
+  const openMonths = {};
+  document.querySelectorAll("#dateList .month-head.open").forEach(el => openMonths[el.dataset.month] = true);
+  if (months.length > 0 && !(months[0] in openMonths)) openMonths[months[0]] = true;
+
+  const monthNames = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+
+  list.innerHTML = months.map(m => {
+    const [y, mo] = m.split("-");
+    const entries = byMonth[m];
+    const uniqueDates = [...new Set(entries.map(r => r.date))].sort().reverse();
+    const totalArticles = entries.length;
+    const isOpen = openMonths[m] !== false ? true : false;
+
+    return `<div class="month-group">
+      <div class="month-head ${isOpen ? "open" : ""}" data-month="${m}">
+        <span class="arrow">▶</span>
+        <span>${y}年${monthNames[parseInt(mo) - 1]}</span>
+        <span class="count">${totalArticles}篇</span>
+      </div>
+      <ul class="date-list ${isOpen ? "open" : ""}">
+        ${uniqueDates.map(d => {
+          const items = entries.filter(r => r.date === d);
+          const types = [...new Set(items.map(r => r.type))];
+          const dotCls = types.length > 1 ? "both" : types[0];
+          const isActive = d === currentDate;
+          return `<li class="date-item ${isActive ? "active" : ""}" data-date="${d}">
+            <span class="dot ${dotCls}"></span>
+            <span class="label">${d.slice(5)}</span>
+            ${d === today ? '<span class="today-tag">今天</span>' : ""}
+            <span class="item-count">${items.length}篇</span>
+          </li>`;
+        }).join("")}
+      </ul>
+    </div>`;
+  }).join("");
+
+  list.querySelectorAll(".month-head").forEach(el => {
+    el.addEventListener("click", () => {
+      el.classList.toggle("open");
+      el.nextElementSibling.classList.toggle("open");
+    });
+  });
+  list.querySelectorAll(".date-item").forEach(el => {
+    el.addEventListener("click", () => {
+      currentDate = el.dataset.date;
+      currentType = null;
+      document.querySelectorAll(".type-tab").forEach(t => t.classList.remove("active"));
+      searchQuery = ""; document.getElementById("searchBox").value = "";
+      renderMobileDates();
+      renderCalendar();
+      renderContent();
+    });
   });
 }
 
@@ -669,6 +756,7 @@ function doSearch() {
   currentType = null;
   document.querySelectorAll(".type-tab").forEach(t => t.classList.remove("active"));
   renderCalendar();
+  renderMobileDates();
   renderContent();
 }
 
@@ -694,6 +782,7 @@ document.getElementById("typeTabs").addEventListener("click", e => {
   }
   searchQuery = ""; document.getElementById("searchBox").value = "";
   renderCalendar();
+  renderMobileDates();
   renderContent();
 });
 
@@ -718,6 +807,7 @@ document.getElementById("themeToggle").addEventListener("click", () => {
   const dates = getDates();
   if (dates.length > 0) currentDate = dates[0];
   renderCalendar();
+  renderMobileDates();
   renderContent();
 
   // 月历翻页
@@ -726,6 +816,7 @@ document.getElementById("themeToggle").addEventListener("click", () => {
     const prev = new Date(y, m - 2, 1);
     calStartMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
     renderCalendar();
+    renderMobileDates();
   });
   document.getElementById("nextMonth").addEventListener("click", () => {
     const [y, m] = calStartMonth.split("-").map(Number);
@@ -733,6 +824,7 @@ document.getElementById("themeToggle").addEventListener("click", () => {
     const nm = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
     if (nm <= `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`) calStartMonth = nm;
     renderCalendar();
+    renderMobileDates();
   });
 
   // 回到顶部
