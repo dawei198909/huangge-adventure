@@ -1,2 +1,3 @@
 build_archive.py
-
+reports/
+__pycache__/
