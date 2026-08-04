@@ -553,9 +553,9 @@ function renderMobileDates() {
     byMonth[m].push(r);
   });
   const months = Object.keys(byMonth).sort().reverse();
+  // 手机端默认全部折叠，不自动展开任何月份
   const openMonths = {};
   document.querySelectorAll("#dateList .month-head.open").forEach(el => openMonths[el.dataset.month] = true);
-  if (months.length > 0 && !(months[0] in openMonths)) openMonths[months[0]] = true;
 
   const monthNames = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
 
@@ -809,6 +809,15 @@ document.getElementById("themeToggle").addEventListener("click", () => {
   renderCalendar();
   renderMobileDates();
   renderContent();
+
+  // 默认视图自动检测：如果当天只有一种类型，自动高亮对应标签
+  const todayReports = REPORTS.filter(r => r.date === dates[0]);
+  const todayTypes = [...new Set(todayReports.map(r => r.type))];
+  if (todayTypes.length === 1) {
+    currentType = todayTypes[0];
+    const tab = document.querySelector(`.type-tab[data-type="${currentType}"]`);
+    if (tab) tab.classList.add("active");
+  }
 
   // 月历翻页
   document.getElementById("prevMonth").addEventListener("click", () => {
