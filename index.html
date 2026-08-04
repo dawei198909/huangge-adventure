@@ -418,6 +418,7 @@ function renderCalendar() {
 function renderContent() {
   const container = document.getElementById("content");
   let reports = REPORTS;
+  if (searchQuery) currentDate = null;  // 搜索时忽略日期
   if (currentDate) reports = reports.filter(r => r.date === currentDate);
   if (currentType) reports = reports.filter(r => r.type === currentType);
   if (searchQuery) {
@@ -442,7 +443,6 @@ function renderContent() {
         return true;
       });
     });
-    currentDate = null;
   }
   
   if (reports.length === 0) {
