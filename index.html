@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📚 AI 日报档案</title>
+<style>
+/* ===== 主题变量 ===== */
+:root {
+  --bg: #f6f1e7;
+  --bg-soft: #efe8da;
+  --card: #fffdf8;
+  --card-border: #e2d9c5;
+  --text: #3a342a;
+  --text-soft: #8a8070;
+  --accent: #b07d3e;
+  --accent-soft: #e8d9c2;
+  --code-bg: #f0e9dc;
+  --shadow: rgba(120, 100, 60, 0.08);
+  --tag-money: #b07d3e;
+  --tag-frontier: #5d7b6f;
+}
+[data-theme="dark"] {
+  --bg: #1f1d19;
+  --bg-soft: #28251f;
+  --card: #2b2822;
+  --card-border: #3d382e;
+  --text: #e8e2d6;
+  --text-soft: #9a9184;
+  --accent: #d4a55c;
+  --accent-soft: #4a3f2b;
+  --code-bg: #38332a;
+  --shadow: rgba(0, 0, 0, 0.25);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* ===== 顶栏 ===== */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--bg-soft);
+  border-bottom: 1px solid var(--card-border);
+  padding: 14px 24px;
+  display: flex; align-items: center; gap: 16px;
+  flex-wrap: wrap;
+}
+.header h1 { font-size: 20px; font-weight: 700; flex: 1; min-width: 160px; }
+.header h1 span { color: var(--accent); }
+.header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+.search-box {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 14px;
+  color: var(--text);
+  width: 200px;
+  outline: none;
+  transition: border 0.2s;
+}
+.search-box:focus { border-color: var(--accent); }
+.search-box::placeholder { color: var(--text-soft); }
+
+.theme-toggle {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text);
+}
+.theme-toggle:hover { border-color: var(--accent); }
+
+.type-tabs {
+  display: flex; gap: 6px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 3px;
+}
+.type-tab {
+  border: none; background: transparent;
+  padding: 5px 14px; border-radius: 16px;
+  font-size: 13px; cursor: pointer; color: var(--text-soft);
+  transition: all 0.2s;
+}
+.type-tab.active { background: var(--accent); color: #fff; }
+
+/* ===== 主布局 ===== */
+.main { display: flex; min-height: calc(100vh - 62px); }
+
+/* 侧边日历 */
+.sidebar {
+  width: 220px; flex-shrink: 0;
+  border-right: 1px solid var(--card-border);
+  padding: 20px 16px;
+  background: var(--bg-soft);
+  position: sticky; top: 62px;
+  height: calc(100vh - 62px);
+  overflow-y: auto;
+}
+.sidebar h3 {
+  font-size: 13px; color: var(--text-soft);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+.date-list { list-style: none; }
+.date-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-radius: 10px;
+  cursor: pointer; font-size: 14px; color: var(--text);
+  transition: background 0.2s;
+  margin-bottom: 2px;
+}
+.date-item:hover { background: var(--card); }
+.date-item.active { background: var(--accent-soft); font-weight: 600; }
+.date-item .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  flex-shrink: 0;
+}
+.date-item .dot.money { background: var(--tag-money); }
+.date-item .dot.frontier { background: var(--tag-frontier); }
+.date-item .dot.both {
+  background: linear-gradient(135deg, var(--tag-money) 50%, var(--tag-frontier) 50%);
+}
+.date-item .count { margin-left: auto; font-size: 12px; color: var(--text-soft); }
+.date-item .today-tag {
+  font-size: 10px; font-weight: 600; color: #fff;
+  background: #5d9b6f; border-radius: 8px;
+  padding: 1px 7px; margin-left: 4px;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(93, 155, 111, 0.5); }
+  50% { box-shadow: 0 0 0 5px rgba(93, 155, 111, 0); }
+}
+.dot.pulse {
+  background: #5d9b6f !important;
+  animation: pulse 2s infinite;
+}
+
+/* 内容区 */
+.content { flex: 1; padding: 32px 36px; max-width: 920px; }
+
+.report-card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 0;
+  margin-bottom: 32px;
+  box-shadow: 0 4px 20px var(--shadow);
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.report-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px var(--shadow);
+}
+.report-card.money { border-left: 4px solid var(--tag-money); }
+.report-card.frontier { border-left: 4px solid var(--tag-frontier); }
+.report-head {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 0; flex-wrap: wrap;
+  padding: 22px 30px 0 30px;
+}
+.report-head .type-badge {
+  padding: 3px 12px; border-radius: 12px;
+  font-size: 12px; font-weight: 600; color: #fff;
+}
+.type-badge.money { background: var(--tag-money); }
+.type-badge.frontier { background: var(--tag-frontier); }
+.report-head .report-date { font-size: 18px; font-weight: 700; }
+.report-head .report-file { font-size: 12px; color: var(--text-soft); margin-left: auto; }
+
+.report-body { padding: 4px 30px 28px 30px; }
+
+.report-body h1, .report-body h2 { margin: 28px 0 12px; }
+.report-body h1 { font-size: 26px; font-weight: 700; line-height: 1.35; }
+.report-body h2 { font-size: 19px; font-weight: 600; color: var(--accent); line-height: 1.45; }
+.report-body h3 { font-size: 16px; margin: 20px 0 8px; font-weight: 600; }
+.report-body p { margin: 8px 0; font-size: 15px; line-height: 1.85; }
+.report-body ul, .report-body ol { margin: 10px 0 10px 24px; font-size: 15px; line-height: 1.85; }
+.report-body li { margin: 4px 0; }
+.report-body blockquote {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 10px 16px; border-radius: 0 10px 10px 0;
+  margin: 12px 0;
+  font-size: 15px;
+}
+.report-body code {
+  background: var(--code-bg);
+  padding: 2px 6px; border-radius: 5px;
+  font-size: 13px;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+}
+.report-body pre {
+  background: var(--code-bg);
+  padding: 14px 16px; border-radius: 10px;
+  overflow-x: auto; margin: 12px 0;
+  font-size: 13px; line-height: 1.5;
+}
+.report-body pre code { background: none; padding: 0; }
+.report-body hr { border: none; border-top: 1px solid var(--card-border); margin: 20px 0; }
+.report-body table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+.report-body th {
+  background: var(--accent-soft); text-align: left;
+  padding: 8px 10px; font-weight: 600;
+}
+.report-body td { padding: 8px 10px; border-bottom: 1px solid var(--card-border); }
+.table-wrap { overflow-x: auto; }
+.report-body a { color: var(--accent); text-decoration: none; }
+.report-body a:hover { text-decoration: underline; }
+
+.empty-state {
+  text-align: center; padding: 80px 20px;
+  color: var(--text-soft);
+}
+.empty-state .big { font-size: 48px; margin-bottom: 12px; }
+
+/* 高亮搜索 */
+mark { background: #f2d98c; color: #3a342a; padding: 0 2px; border-radius: 3px; }
+[data-theme="dark"] mark { background: #6b5a2a; color: #fff; }
+
+/* 回到顶部 */
+.back-to-top {
+  position: fixed; bottom: 28px; right: 28px;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--accent); color: #fff; border: none;
+  font-size: 20px; cursor: pointer;
+  opacity: 0; transform: translateY(16px);
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  z-index: 200;
+}
+.back-to-top.visible {
+  opacity: 1; transform: translateY(0);
+  pointer-events: auto;
+}
+.back-to-top:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.25); }
+
+/* 响应式 */
+@media (max-width: 800px) {
+  .main { flex-direction: column; }
+  .sidebar {
+    width: 100%; position: static; height: auto;
+    border-right: none; border-bottom: 1px solid var(--card-border);
+    max-height: 200px;
+  }
+  .date-list { display: flex; flex-wrap: wrap; gap: 4px; }
+  .date-item { font-size: 13px; padding: 5px 8px; }
+  .content { padding: 16px; }
+  .report-card { padding: 18px; }
+  .search-box { width: 140px; }
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📚 AI 日报档案 <span>· 每日一读</span></h1>
+  <div class="header-actions">
+    <div class="type-tabs" id="typeTabs">
+      <button class="type-tab active" data-type="all">全部</button>
+      <button class="type-tab" data-type="money">💰 赚钱案例</button>
+      <button class="type-tab" data-type="frontier">📡 前沿情报</button>
+    </div>
+    <input class="search-box" id="searchBox" type="text" placeholder="🔍 搜索日报内容...">
+    <button class="theme-toggle" id="themeToggle">🌙 深色</button>
+  </div>
+</div>
+
+<div class="main">
+  <aside class="sidebar">
+    <h3>📅 按日期浏览</h3>
+    <ul class="date-list" id="dateList"></ul>
+  </aside>
+  <main class="content" id="content"></main>
+</div>
+
+<script src="data.js"></script>
+
+<button class="back-to-top" id="backToTop" title="回到顶部" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+// ===== 状态 =====
+let currentDate = null;
+let currentType = "all";
+
+// ===== 工具 =====
+let searchQuery = "";
+function getDates() {
+  const dates = {};
+  REPORTS.forEach(r => {
+    if (!dates[r.date]) dates[r.date] = { money: 0, frontier: 0 };
+    dates[r.date][r.type]++;
+  });
+  return Object.keys(dates).sort().reverse();
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function highlightText(text, query) {
+  if (!query) return text;
+  const esc = escapeHtml(text);
+  const escQuery = escapeHtml(query).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp("(" + escQuery + ")", "gi");
+  return esc.replace(re, "<mark>$1</mark>");
+}
+
+// ===== 渲染 =====
+function renderDates() {
+  const list = document.getElementById("dateList");
+  const dates = getDates();
+  const latestDate = dates[0];
+  const counts = {};
+  REPORTS.forEach(r => { counts[r.date] = (counts[r.date] || 0) + 1; });
+  list.innerHTML = dates.map(d => {
+    const info = REPORTS.reduce((acc, r) => {
+      if (r.date === d) { acc[r.type] = true; }
+      return acc;
+    }, {});
+    const dotClass = (info.money && info.frontier) ? "both" : (info.money ? "money" : "frontier");
+    const isLatest = d === latestDate;
+    return `<li class="date-item ${currentDate === d ? "active" : ""} ${isLatest ? "today" : ""}" data-date="${d}">
+      <span class="dot ${dotClass} ${isLatest ? "pulse" : ""}"></span>${d}
+      ${isLatest ? '<span class="today-tag">今天</span>' : ""}
+      <span class="count">${counts[d] || 0}</span>
+    </li>`;
+  }).join("");
+  list.querySelectorAll(".date-item").forEach(el => {
+    el.addEventListener("click", () => {
+      currentDate = el.dataset.date;
+      renderDates();
+      renderContent();
+    });
+  });
+}
+
+function renderContent() {
+  const container = document.getElementById("content");
+  let reports = REPORTS;
+  if (currentDate) reports = reports.filter(r => r.date === currentDate);
+  if (currentType !== "all") reports = reports.filter(r => r.type === currentType);
+  
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    reports = reports.filter(r => r.content.toLowerCase().includes(q));
+  }
+  
+  if (reports.length === 0) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="big">📭</div>
+      <p>${searchQuery ? "没有找到匹配的内容" : "这一天没有日报"}</p>
+    </div>`;
+    return;
+  }
+  
+  // 按日期倒序渲染
+  const byDate = {};
+  reports.forEach(r => {
+    if (!byDate[r.date]) byDate[r.date] = [];
+    byDate[r.date].push(r);
+  });
+  
+  const dates = Object.keys(byDate).sort().reverse();
+  container.innerHTML = dates.map(d => {
+    return byDate[d].map(r => `
+      <article class="report-card ${r.type}" data-date="${r.date}" data-type="${r.type}">
+        <div class="report-head">
+          <span class="type-badge ${r.type}">${r.type === "money" ? "💰 赚钱案例" : "📡 前沿情报"}</span>
+          <span class="report-date">${r.date}</span>
+          <span class="report-file">${escapeHtml(r.filename)}</span>
+        </div>
+        <div class="report-body">${r.html}</div>
+      </article>
+    `).join("");
+  }).join("");
+}
+
+// ===== 事件 =====
+document.getElementById("typeTabs").addEventListener("click", e => {
+  const tab = e.target.closest(".type-tab");
+  if (!tab) return;
+  document.querySelectorAll(".type-tab").forEach(t => t.classList.remove("active"));
+  tab.classList.add("active");
+  currentType = tab.dataset.type;
+  renderContent();
+});
+
+let searchTimer;
+document.getElementById("searchBox").addEventListener("input", e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    searchQuery = e.target.value.trim();
+    if (searchQuery) currentDate = null;  // 搜索时忽略日期过滤
+    renderDates();
+    renderContent();
+  }, 250);
+});
+
+document.getElementById("themeToggle").addEventListener("click", () => {
+  const current = document.documentElement.dataset.theme;
+  const next = current === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  document.getElementById("themeToggle").textContent = next === "dark" ? "☀️ 浅色" : "🌙 深色";
+  localStorage.setItem("theme", next);
+});
+
+// ===== 初始化 =====
+(function init() {
+  const savedTheme = localStorage.getItem("theme");
+  if (savedTheme === "dark") {
+    document.documentElement.dataset.theme = "dark";
+    document.getElementById("themeToggle").textContent = "☀️ 浅色";
+  }
+  const dates = getDates();
+  if (dates.length > 0) currentDate = dates[0];  // 默认最新一天
+  renderDates();
+  renderContent();
+
+  // 回到顶部按钮显隐
+  const backBtn = document.getElementById("backToTop");
+  window.addEventListener("scroll", () => {
+    backBtn.classList.toggle("visible", window.scrollY > 300);
+  }, {passive: true});
+})();
+</script>
+</body>
+</html>
