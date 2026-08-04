@@ -154,6 +154,14 @@ body {
 .cal-dot.has-report.frontier { background: var(--tag-frontier); }
 .cal-dot.has-report.apps { background: var(--tag-apps); }
 .cal-dot.has-report.today { opacity: 1; box-shadow: 0 0 5px rgba(176,125,62,0.4); }
+
+/* 未读标记 */
+.cal-dot.unread::after {
+  content: ""; position: absolute;
+  top: 1px; right: 1px;
+  width: 5px; height: 5px;
+  background: #e05; border-radius: 50%;
+}
 .cal-dot .tooltip {
   display: none; position: absolute;
   bottom: 130%; left: 50%; transform: translateX(-50%);
@@ -211,6 +219,37 @@ body {
 .report-body h2.collapsed::after { transform: rotate(-90deg); }
 .section-body { transition: max-height 0.3s ease, opacity 0.3s; overflow: hidden; }
 .section-body.hidden { max-height: 0; opacity: 0; }
+
+/* 分析层 — 金色左边框突出 */
+.section-body.insight {
+  border-left: 3px solid #c99874;
+  padding-left: 16px; margin: 12px 0;
+  background: linear-gradient(90deg, rgba(201,152,116,0.08), transparent);
+  border-radius: 0 6px 6px 0;
+}
+
+/* 卡片内目录 */
+.report-toc {
+  padding: 12px 30px 0 30px; font-size: 13px; color: var(--text-soft);
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.report-toc a {
+  background: var(--bg-soft); border: 1px solid var(--card-border);
+  border-radius: 14px; padding: 3px 12px; font-size: 12px; cursor: pointer;
+  text-decoration: none; color: var(--text); transition: all 0.15s;
+}
+.report-toc a:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* 移动端优化 */
+@media (max-width: 640px) {
+  .report-head { padding: 16px 16px 0 16px; }
+  .report-body { padding: 12px 16px 24px 16px; }
+  .report-body h1 { font-size: 22px; }
+  .report-body h2 { font-size: 17px; }
+  .report-body p { font-size: 14px; }
+  .sidebar { position: static; width: 100%; max-height: none; }
+  .cal-dot { width: 14px; height: 14px; }
+}
 .report-body h3 { font-size: 16px; margin: 20px 0 8px; font-weight: 600; }
 .report-body p { margin: 8px 0; font-size: 15px; line-height: 1.85; }
 .report-body ul, .report-body ol { margin: 10px 0 10px 24px; font-size: 15px; line-height: 1.85; }
@@ -409,12 +448,21 @@ function renderCalendar() {
   strip.querySelectorAll(".cal-dot:not(.empty)").forEach(el => {
     el.addEventListener("click", () => {
       currentDate = el.dataset.date;
-      currentType = null;  // 日期跳转时清除类型筛选
+      currentType = null;
       document.querySelectorAll(".type-tab").forEach(t => t.classList.remove("active"));
       searchQuery = ""; document.getElementById("searchBox").value = "";
+      // 标记已读
+      const lastVisit = localStorage.getItem("lastVisitDate") || "";
+      if (el.dataset.date > lastVisit) localStorage.setItem("lastVisitDate", todayStr);
       renderCalendar();
       renderContent();
     });
+  });
+
+  // ===== 未读标记 =====
+  const lastVisit = localStorage.getItem("lastVisitDate") || "";
+  strip.querySelectorAll(`.cal-dot[data-date]`).forEach(el => {
+    if (el.dataset.date > lastVisit && el.dataset.has === "1") el.classList.add("unread");
   });
 }
 
@@ -503,6 +551,31 @@ function renderContent() {
       }
       h2.parentNode.insertBefore(wrapper, h2.nextElementSibling || h2.nextSibling);
     });
+  });
+
+  // ===== 分析层识别 =====
+  const analysisKW = ["具体做法","国内可复制","赚钱逻辑","收入情况","一句话建议","可复用","操作技巧","落地路径","怎么做","可行性","变现","成本","门槛"];
+  container.querySelectorAll(".report-body h2").forEach(h2 => {
+    const txt = h2.textContent;
+    if (analysisKW.some(k => txt.includes(k))) {
+      const section = h2.nextElementSibling;
+      if (section && section.classList.contains("section-body")) section.classList.add("insight");
+    }
+  });
+
+  // ===== 卡片目录 =====
+  container.querySelectorAll(".report-card").forEach(card => {
+    const h2s = card.querySelectorAll(".report-body h2");
+    if (h2s.length < 2) return;
+    const toc = document.createElement("div");
+    toc.className = "report-toc";
+    h2s.forEach((h2, i) => {
+      const link = document.createElement("a");
+      link.textContent = h2.textContent.replace("▾","").trim();
+      link.addEventListener("click", () => h2.scrollIntoView({behavior:"smooth",block:"start"}));
+      toc.appendChild(link);
+    });
+    card.querySelector(".report-body").insertBefore(toc, card.querySelector(".report-body").firstChild);
   });
 
   // ===== 搜索高亮 =====
