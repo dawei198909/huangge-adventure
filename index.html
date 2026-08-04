@@ -101,58 +101,56 @@ body {
   max-width: 1240px; margin: 0 auto;
 }
 
-/* 侧边日历 — Flomo 风格 */
+/* 侧边日期列表 — 按月折叠 */
 .sidebar {
-  width: 200px; flex-shrink: 0;
+  width: 210px; flex-shrink: 0;
   border-right: 1px solid var(--card-border);
-  padding: 16px 10px;
+  padding: 16px 12px;
   background: var(--bg-soft);
   position: sticky; top: 62px;
   height: calc(100vh - 62px);
   overflow-y: auto;
-  display: flex; flex-direction: column; align-items: center;
 }
-.cal-month-strip {
-  display: flex; flex-direction: column; gap: 10px; width: 100%;
-  margin-bottom: 8px;
+.month-group { margin-bottom: 4px; }
+.month-head {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 8px; border-radius: 8px;
+  cursor: pointer; font-size: 13px; font-weight: 600;
+  color: var(--text); user-select: none;
+  transition: background 0.15s;
 }
-.cal-month-label {
-  font-size: 12px; font-weight: 600; color: var(--text-soft);
-  text-align: center; margin-bottom: 2px;
+.month-head:hover { background: var(--card); }
+.month-head .arrow {
+  font-size: 10px; transition: transform 0.2s;
+  color: var(--text-soft); width: 14px; text-align: center;
 }
-.cal-week-row {
-  display: flex; gap: 3px; justify-content: center;
+.month-head.open .arrow { transform: rotate(90deg); }
+.month-head .count { margin-left: auto; font-size: 11px; color: var(--text-soft); }
+.date-list { list-style: none; overflow: hidden; max-height: 0; transition: max-height 0.25s; }
+.date-list.open { max-height: 600px; }
+.date-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 8px 5px 22px; border-radius: 6px;
+  cursor: pointer; font-size: 13px; color: var(--text);
+  transition: background 0.15s;
 }
-.cal-dot {
-  width: 16px; height: 16px; border-radius: 4px;
-  background: var(--card);
-  cursor: pointer; position: relative;
-  transition: background 0.15s, transform 0.1s;
+.date-item:hover { background: var(--card); }
+.date-item.active { background: var(--accent-soft); font-weight: 600; }
+.date-item .dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
 }
-.cal-dot:hover { transform: scale(1.3); z-index: 2; }
-.cal-dot.empty { background: transparent; cursor: default; }
-.cal-dot.empty:hover { transform: none; }
-.cal-dot.today { border: 2px solid var(--accent); }
-.cal-dot.has-report { background: var(--accent); opacity: 0.75; }
-.cal-dot.has-report.today { opacity: 1; box-shadow: 0 0 6px rgba(176, 125, 62, 0.4); }
-.cal-dot .tooltip {
-  display: none; position: absolute;
-  bottom: 120%; left: 50%; transform: translateX(-50%);
-  background: var(--text); color: var(--bg);
-  padding: 2px 7px; border-radius: 5px;
-  font-size: 10px; white-space: nowrap;
-  pointer-events: none; z-index: 10;
+.date-item .dot.money { background: var(--tag-money); }
+.date-item .dot.frontier { background: var(--tag-frontier); }
+.date-item .dot.both {
+  background: linear-gradient(135deg, var(--tag-money) 50%, var(--tag-frontier) 50%);
 }
-.cal-dot:hover .tooltip { display: block; }
-.cal-nav-row {
-  display: flex; gap: 4px; justify-content: center; margin-bottom: 8px;
+.date-item .label { flex: 1; }
+.date-item .item-count { font-size: 11px; color: var(--text-soft); }
+.date-item .today-tag {
+  font-size: 9px; font-weight: 600; color: #fff;
+  background: #5d9b6f; border-radius: 6px;
+  padding: 1px 5px;
 }
-.cal-nav-row button {
-  width: 22px; height: 22px; border: none; border-radius: 4px;
-  background: var(--card); color: var(--text); cursor: pointer; font-size: 11px;
-  display: flex; align-items: center; justify-content: center;
-}
-.cal-nav-row button:hover { background: var(--accent-soft); }
 
 /* 内容区 */
 .content { flex: 1; padding: 32px 36px; max-width: 920px; }
@@ -286,13 +284,7 @@ mark { background: #f2d98c; color: #3a342a; padding: 0 2px; border-radius: 3px; 
 </div>
 
 <div class="main">
-  <aside class="sidebar">
-    <div class="cal-nav-row">
-      <button id="prevMonth" title="上月">◀</button>
-      <button id="nextMonth" title="下月">▶</button>
-    </div>
-    <div class="cal-month-strip" id="calMonthStrip"></div>
-  </aside>
+  <aside class="sidebar" id="dateList"></aside>
   <main class="content" id="content"></main>
 </div>
 
@@ -329,95 +321,78 @@ function highlightText(text, query) {
 }
 
 // ===== 渲染 =====
-// ===== 日历状态 =====
-let calStartMonth; // 6-digit YYYYMM of the first displayed month
-
-function getReportDates() {
-  const set = new Set();
-  REPORTS.forEach(r => set.add(r.date));
-  return set;
-}
-
-function getAllReportMonths() {
-  const months = new Set();
-  REPORTS.forEach(r => { months.add(r.date.slice(0, 7)); });
-  return months;
-}
-
-function renderCalendar() {
-  const strip = document.getElementById("calMonthStrip");
-  const reportDates = getReportDates();
-  const allMonths = getAllReportMonths();
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-  const thisMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+function renderDates() {
+  const list = document.getElementById("dateList");
+  const today = new Date().toISOString().slice(0, 10);
   
-  // Always show current month + months that have reports
-  const monthsToShow = new Set(allMonths);
-  monthsToShow.add(thisMonth);
+  // Group by month
+  const byMonth = {};
+  REPORTS.forEach(r => {
+    const m = r.date.slice(0, 7);
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(r);
+  });
   
-  // The calStartMonth controls scroll position — show months from that point
-  if (!calStartMonth) {
-    calStartMonth = [...monthsToShow].sort().pop(); // latest
-  }
-  const startYm = calStartMonth;
-  const [sy, sm] = startYm.split("-").map(Number);
+  const months = Object.keys(byMonth).sort().reverse();
+  // Keep track of which months are open
+  const openMonths = {};
+  document.querySelectorAll(".month-head.open").forEach(el => {
+    openMonths[el.dataset.month] = true;
+  });
+  // New month defaults to open
+  if (months.length > 0 && !(months[0] in openMonths)) openMonths[months[0]] = true;
   
-  // Build 6 months starting from calStartMonth going backward
-  const monthBlocks = [];
-  let y = sy, m = sm;
-  for (let i = 0; i < 6; i++) {
-    const ym = `${y}-${String(m).padStart(2, "0")}`;
-    monthBlocks.push({ym, y, m: m - 1});
-    m--;
-    if (m < 1) { m = 12; y--; }
-  }
-  
-  // Filter to months that exist in our data + current month
-  // But still show empty months to fill space
   const monthNames = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
   
-  strip.innerHTML = monthBlocks.map(b => {
-    const daysInMonth = new Date(b.y, b.m + 1, 0).getDate();
-    const firstWeekday = new Date(b.y, b.m, 1).getDay(); // 0=Sun
+  list.innerHTML = months.map(m => {
+    const [y, mo] = m.split("-");
+    const monthLabel = `${y}年${monthNames[parseInt(mo) - 1]}`;
+    const entries = byMonth[m]; // entries are Reports, each has date + type
+    // Unique dates
+    const uniqueDates = [...new Set(entries.map(r => r.date))].sort().reverse();
+    const totalArticles = entries.length;
+    const isOpen = openMonths[m] || false;
     
-    // Build 7-col grid
-    const rows = [];
-    let currentRow = [];
-    // Empty cells before 1st
-    for (let d = 0; d < firstWeekday; d++) currentRow.push('<span class="cal-dot empty"></span>');
+    const dateItems = uniqueDates.map(d => {
+      const items = entries.filter(r => r.date === d);
+      const types = [...new Set(items.map(r => r.type))];
+      const dotClass = (types.includes("money") && types.includes("frontier")) ? "both" : (types.includes("money") ? "money" : "frontier");
+      const isToday = d === today;
+      const isActive = d === currentDate;
+      const dayStr = d.slice(5); // "08-03"
+      
+      return `<li class="date-item ${isActive ? "active" : ""}" data-date="${d}">
+        <span class="dot ${dotClass}"></span>
+        <span class="label">${dayStr}</span>
+        ${isToday ? '<span class="today-tag">今天</span>' : ""}
+        <span class="item-count">${items.length}篇</span>
+      </li>`;
+    }).join("");
     
-    for (let day = 1; day <= daysInMonth; day++) {
-      const ds = `${b.y}-${String(b.m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      const has = reportDates.has(ds);
-      const isToday = ds === todayStr;
-      currentRow.push(
-        `<span class="cal-dot${has ? " has-report" : ""}${isToday ? " today" : ""}"
-              data-date="${ds}" data-has="${has ? 1 : 0}">
-          <span class="tooltip">${ds}</span>
-        </span>`
-      );
-      if (currentRow.length === 7) {
-        rows.push(`<div class="cal-week-row">${currentRow.join("")}</div>`);
-        currentRow = [];
-      }
-    }
-    if (currentRow.length > 0) {
-      rows.push(`<div class="cal-week-row">${currentRow.join("")}</div>`);
-    }
-    
-    return `<div class="cal-month-label">${monthNames[b.m]}</div>${rows.join("")}`;
+    return `<div class="month-group">
+      <div class="month-head ${isOpen ? "open" : ""}" data-month="${m}">
+        <span class="arrow">▶</span>
+        <span>${monthLabel}</span>
+        <span class="count">${totalArticles}篇</span>
+      </div>
+      <ul class="date-list ${isOpen ? "open" : ""}">${dateItems}</ul>
+    </div>`;
   }).join("");
   
   // Click handlers
-  strip.querySelectorAll(".cal-dot:not(.empty)").forEach(el => {
-    if (el.dataset.has === "1") {
-      el.addEventListener("click", () => {
-        currentDate = el.dataset.date;
-        renderCalendar();
-        renderContent();
-      });
-    }
+  list.querySelectorAll(".month-head").forEach(el => {
+    el.addEventListener("click", () => {
+      el.classList.toggle("open");
+      el.nextElementSibling.classList.toggle("open");
+    });
+  });
+  list.querySelectorAll(".date-item").forEach(el => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      currentDate = el.dataset.date;
+      renderDates();
+      renderContent();
+    });
   });
 }
 
@@ -477,8 +452,8 @@ document.getElementById("searchBox").addEventListener("input", e => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {
     searchQuery = e.target.value.trim();
-    if (searchQuery) currentDate = null;  // 搜索时忽略日期过滤
-    renderCalendar();
+    if (searchQuery) currentDate = null;
+    renderDates();
     renderContent();
   }, 250);
 });
@@ -499,28 +474,10 @@ document.getElementById("themeToggle").addEventListener("click", () => {
     document.getElementById("themeToggle").textContent = "☀️ 浅色";
   }
   const today = new Date();
-  calStartMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   const dates = getDates();
-  if (dates.length > 0) currentDate = dates[0];  // 默认最新一天
-  renderCalendar();
+  if (dates.length > 0) currentDate = dates[0];
+  renderDates();
   renderContent();
-
-  // 月历翻页：向前/向后滚动起始月份
-  document.getElementById("prevMonth").addEventListener("click", () => {
-    const [y, m] = calStartMonth.split("-").map(Number);
-    const prev = new Date(y, m - 2, 1); // go back one more month
-    calStartMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
-    renderCalendar();
-  });
-  document.getElementById("nextMonth").addEventListener("click", () => {
-    const [y, m] = calStartMonth.split("-").map(Number);
-    const next = new Date(y, m, 1); // go forward one month
-    calStartMonth = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
-    if (calStartMonth > `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`) {
-      calStartMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-    }
-    renderCalendar();
-  });
 
   // 回到顶部按钮显隐
   const backBtn = document.getElementById("backToTop");
