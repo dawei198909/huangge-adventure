@@ -288,7 +288,6 @@ mark { background: #f2d98c; color: #3a342a; padding: 0 2px; border-radius: 3px; 
   <h1>📚 AI 日报档案 <span>· 每日一读</span></h1>
   <div class="header-actions">
     <div class="type-tabs" id="typeTabs">
-      <button class="type-tab active" data-type="all">全部</button>
       <button class="type-tab" data-type="money">💰 赚钱</button>
       <button class="type-tab" data-type="apps">🔧 应用</button>
       <button class="type-tab" data-type="frontier">📡 前沿</button>
@@ -317,10 +316,9 @@ mark { background: #f2d98c; color: #3a342a; padding: 0 2px; border-radius: 3px; 
 <script>
 // ===== 状态 =====
 let currentDate = null;
-let currentType = "all";
-
-// ===== 工具 =====
+let currentType = null;
 let searchQuery = "";
+// ===== 工具 =====
 function getDates() {
   const dates = {};
   REPORTS.forEach(r => {
@@ -413,11 +411,11 @@ function renderContent() {
   const container = document.getElementById("content");
   let reports = REPORTS;
   if (currentDate) reports = reports.filter(r => r.date === currentDate);
-  if (currentType !== "all") reports = reports.filter(r => r.type === currentType);
-  
+  if (currentType) reports = reports.filter(r => r.type === currentType);
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
     reports = reports.filter(r => r.content.toLowerCase().includes(q));
+    currentDate = null;  // 搜索时显示所有日期
   }
   
   if (reports.length === 0) {
@@ -486,11 +484,18 @@ function renderContent() {
 document.getElementById("typeTabs").addEventListener("click", e => {
   const tab = e.target.closest(".type-tab");
   if (!tab) return;
-  document.querySelectorAll(".type-tab").forEach(t => t.classList.remove("active"));
-  tab.classList.add("active");
-  currentType = tab.dataset.type;
-  if (currentType === "all") currentDate = getDates()[0];
-  else currentDate = null;
+  // 如果点的是已选中的标签，取消选中（显示全部）
+  if (tab.classList.contains("active")) {
+    tab.classList.remove("active");
+    currentType = null;
+    currentDate = getDates()[0];
+  } else {
+    document.querySelectorAll(".type-tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    currentType = tab.dataset.type;
+    currentDate = null;
+  }
+  searchQuery = ""; document.getElementById("searchBox").value = "";
   renderCalendar();
   renderContent();
 });
@@ -500,7 +505,6 @@ document.getElementById("searchBox").addEventListener("input", e => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {
     searchQuery = e.target.value.trim();
-    if (searchQuery) currentDate = null;
     renderCalendar();
     renderContent();
   }, 250);
