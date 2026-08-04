@@ -144,7 +144,9 @@ body {
 .cal-dot.empty { background: transparent; cursor: default; }
 .cal-dot.empty:hover { transform: none; }
 .cal-dot.today { border: 2px solid var(--accent); }
-.cal-dot.has-report { background: var(--accent); opacity: 0.7; }
+.cal-dot.has-report.money { background: var(--tag-money); }
+.cal-dot.has-report.frontier { background: var(--tag-frontier); }
+.cal-dot.has-report.apps { background: var(--tag-apps); }
 .cal-dot.has-report.today { opacity: 1; box-shadow: 0 0 5px rgba(176,125,62,0.4); }
 .cal-dot .tooltip {
   display: none; position: absolute;
@@ -297,7 +299,14 @@ mark { background: #f2d98c; color: #3a342a; padding: 0 2px; border-radius: 3px; 
 </div>
 
 <div class="main">
-  <aside class="sidebar" id="dateList"></aside>
+  <aside class="sidebar">
+    <div class="cal-nav-row">
+      <button id="prevMonth" title="上月">◀</button>
+      <span class="cal-year-label" id="calYearLabel"></span>
+      <button id="nextMonth" title="下月">▶</button>
+    </div>
+    <div class="cal-month-strip" id="calMonthStrip"></div>
+  </aside>
   <main class="content" id="content"></main>
 </div>
 
@@ -334,76 +343,67 @@ function highlightText(text, query) {
 }
 
 // ===== 渲染 =====
-function renderDates() {
-  const list = document.getElementById("dateList");
-  const today = new Date().toISOString().slice(0, 10);
-  
-  // Group by month
-  const byMonth = {};
+// ===== 小格子日历 =====
+let calStartMonth;
+
+function getReportDates() {
+  const map = {};  // date → {money: bool, frontier: bool, apps: bool}
   REPORTS.forEach(r => {
-    const m = r.date.slice(0, 7);
-    if (!byMonth[m]) byMonth[m] = [];
-    byMonth[m].push(r);
+    if (!map[r.date]) map[r.date] = {};
+    map[r.date][r.type] = true;
   });
-  
-  const months = Object.keys(byMonth).sort().reverse();
-  // Keep track of which months are open
-  const openMonths = {};
-  document.querySelectorAll(".month-head.open").forEach(el => {
-    openMonths[el.dataset.month] = true;
-  });
-  // New month defaults to open
-  if (months.length > 0 && !(months[0] in openMonths)) openMonths[months[0]] = true;
-  
+  return map;
+}
+
+function renderCalendar() {
+  const strip = document.getElementById("calMonthStrip");
+  const label = document.getElementById("calYearLabel");
+  const reportDates = getReportDates();
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const thisMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+
+  if (!calStartMonth) calStartMonth = thisMonth;
+  const [sy, sm] = calStartMonth.split("-").map(Number);
+  label.textContent = `${sy}年`;
+
+  const monthBlocks = [];
+  let y = sy, m = sm;
+  for (let i = 0; i < 6; i++) {
+    monthBlocks.push({y, mo: m});
+    m--; if (m < 1) { m = 12; y--; }
+  }
+
   const monthNames = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
-  
-  list.innerHTML = months.map(m => {
-    const [y, mo] = m.split("-");
-    const monthLabel = `${y}年${monthNames[parseInt(mo) - 1]}`;
-    const entries = byMonth[m]; // entries are Reports, each has date + type
-    // Unique dates
-    const uniqueDates = [...new Set(entries.map(r => r.date))].sort().reverse();
-    const totalArticles = entries.length;
-    const isOpen = openMonths[m] || false;
-    
-    const dateItems = uniqueDates.map(d => {
-      const items = entries.filter(r => r.date === d);
-      const types = [...new Set(items.map(r => r.type))];
-      const dotClass = (types.includes("money") && types.includes("frontier")) ? "both" : (types.includes("money") ? "money" : "frontier");
-      const isToday = d === today;
-      const isActive = d === currentDate;
-      const dayStr = d.slice(5); // "08-03"
-      
-      return `<li class="date-item ${isActive ? "active" : ""}" data-date="${d}">
-        <span class="dot ${dotClass}"></span>
-        <span class="label">${dayStr}</span>
-        ${isToday ? '<span class="today-tag">今天</span>' : ""}
-        <span class="item-count">${items.length}篇</span>
-      </li>`;
-    }).join("");
-    
-    return `<div class="month-group">
-      <div class="month-head ${isOpen ? "open" : ""}" data-month="${m}">
-        <span class="arrow">▶</span>
-        <span>${monthLabel}</span>
-        <span class="count">${totalArticles}篇</span>
-      </div>
-      <ul class="date-list ${isOpen ? "open" : ""}">${dateItems}</ul>
-    </div>`;
+
+  strip.innerHTML = monthBlocks.map(b => {
+    const daysInMonth = new Date(b.y, b.mo, 0).getDate();
+    const firstWeekday = new Date(b.y, b.mo - 1, 1).getDay();
+    const rows = [];
+    let cur = [];
+    for (let d = 0; d < firstWeekday; d++) cur.push('<span class="cal-dot empty"></span>');
+    for (let day = 1; day <= daysInMonth; day++) {
+      const ds = `${b.y}-${String(b.mo).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const info = reportDates[ds];
+      const typeCls = info ? (info.apps ? "apps" : (info.money ? "money" : "frontier")) : "";
+      const has = !!info;
+      const isToday = ds === todayStr;
+      cur.push(
+        `<span class="cal-dot${has ? " has-report "+typeCls : ""}${isToday ? " today" : ""}"
+              data-date="${ds}" data-has="${has ? 1 : 0}">
+          <span class="tooltip">${ds}${has ? (info.money?" 💰":"")+(info.frontier?" 📡":"")+(info.apps?" 🔧":"") : ""}</span>
+        </span>`
+      );
+      if (cur.length === 7) { rows.push(`<div class="cal-week-row">${cur.join("")}</div>`); cur = []; }
+    }
+    if (cur.length > 0) rows.push(`<div class="cal-week-row">${cur.join("")}</div>`);
+    return `<div class="cal-month-label">${monthNames[b.mo - 1]}</div>${rows.join("")}`;
   }).join("");
-  
-  // Click handlers
-  list.querySelectorAll(".month-head").forEach(el => {
+
+  strip.querySelectorAll(".cal-dot:not(.empty)").forEach(el => {
     el.addEventListener("click", () => {
-      el.classList.toggle("open");
-      el.nextElementSibling.classList.toggle("open");
-    });
-  });
-  list.querySelectorAll(".date-item").forEach(el => {
-    el.addEventListener("click", (e) => {
-      e.stopPropagation();
       currentDate = el.dataset.date;
-      renderDates();
+      renderCalendar();
       renderContent();
     });
   });
@@ -489,9 +489,9 @@ document.getElementById("typeTabs").addEventListener("click", e => {
   document.querySelectorAll(".type-tab").forEach(t => t.classList.remove("active"));
   tab.classList.add("active");
   currentType = tab.dataset.type;
-  if (currentType === "all") currentDate = getDates()[0];  // 恢复最新日期
-  else currentDate = null;  // 类型筛选时清除日期过滤
-  renderDates();
+  if (currentType === "all") currentDate = getDates()[0];
+  else currentDate = null;
+  renderCalendar();
   renderContent();
 });
 
@@ -501,7 +501,7 @@ document.getElementById("searchBox").addEventListener("input", e => {
   searchTimer = setTimeout(() => {
     searchQuery = e.target.value.trim();
     if (searchQuery) currentDate = null;
-    renderDates();
+    renderCalendar();
     renderContent();
   }, 250);
 });
@@ -522,16 +522,30 @@ document.getElementById("themeToggle").addEventListener("click", () => {
     document.getElementById("themeToggle").textContent = "☀️ 浅色";
   }
   const today = new Date();
+  calStartMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   const dates = getDates();
   if (dates.length > 0) currentDate = dates[0];
-  renderDates();
+  renderCalendar();
   renderContent();
 
-  // 回到顶部按钮显隐
+  // 月历翻页
+  document.getElementById("prevMonth").addEventListener("click", () => {
+    const [y, m] = calStartMonth.split("-").map(Number);
+    const prev = new Date(y, m - 2, 1);
+    calStartMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
+    renderCalendar();
+  });
+  document.getElementById("nextMonth").addEventListener("click", () => {
+    const [y, m] = calStartMonth.split("-").map(Number);
+    const next = new Date(y, m, 1);
+    const nm = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+    if (nm <= `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`) calStartMonth = nm;
+    renderCalendar();
+  });
+
+  // 回到顶部
   const backBtn = document.getElementById("backToTop");
-  window.addEventListener("scroll", () => {
-    backBtn.classList.toggle("visible", window.scrollY > 300);
-  }, {passive: true});
+  window.addEventListener("scroll", () => backBtn.classList.toggle("visible", window.scrollY > 300), {passive: true});
 })();
 </script>
 </body>
