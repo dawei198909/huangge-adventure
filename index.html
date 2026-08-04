@@ -503,40 +503,30 @@ function renderContent() {
   });
 
   // ===== 搜索高亮 =====
-  if (searchQuery) {
+  if (searchQuery && reports.length > 0) {
     const keywords = searchQuery.trim().split(/\s+/).filter(k => k.length > 0);
-    if (keywords.length > 0) {
-      const highlightInNode = (node) => {
-        if (node.nodeType === 3) {
-          let txt = node.textContent;
-          let changed = false;
-          keywords.forEach(kw => {
-            // 为高亮生成能跨空格匹配的正则
-            const chars = [...kw];
-            const reStr = chars.map(c => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s*");
-            const re = new RegExp(reStr, "gi");
-            if (re.test(txt)) changed = true;
-          });
-          if (!changed) return;
-          const span = document.createElement("span");
-          let result = txt;
-          keywords.forEach(kw => {
-            const chars = [...kw];
-            const reStr = chars.map(c => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s*");
-            const re = new RegExp("(" + reStr + ")", "gi");
-            result = result.replace(re, "<mark>$1</mark>");
-          });
-          span.innerHTML = result;
-          node.parentNode.replaceChild(span, node);
-        } else if (node.nodeType === 1 && !["SCRIPT","STYLE","MARK"].includes(node.tagName)) {
-          Array.from(node.childNodes).forEach(highlightInNode);
-        }
-      };
-      container.querySelectorAll(".report-card").forEach(card => highlightInNode(card));
-      // 滚动到第一个高亮
-      const firstMark = container.querySelector("mark");
-      if (firstMark) firstMark.scrollIntoView({behavior: "smooth", block: "center"});
-    }
+    keywords.forEach(kw => {
+      const chars = [...kw];
+      const reStr = chars.map(c => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s*");
+      const re = new RegExp("(?![^<]*>)(" + reStr + ")", "gi");
+      // 只在文本节点区域替换（排除标签内的属性值）
+      container.querySelectorAll(".report-card *").forEach(el => {
+        el.childNodes.forEach(child => {
+          if (child.nodeType === 3) {
+            const txt = child.textContent;
+            if (re.test(txt)) {
+              re.lastIndex = 0;
+              const span = document.createElement("span");
+              span.innerHTML = txt.replace(re, "<mark>$1</mark>");
+              child.replaceWith(span);
+            }
+          }
+        });
+      });
+    });
+    // 滚动到第一个高亮
+    const firstMark = container.querySelector("mark");
+    if (firstMark) firstMark.scrollIntoView({behavior: "smooth", block: "center"});
   }
 }
 
