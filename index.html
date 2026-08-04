@@ -565,17 +565,19 @@ function renderContent() {
 
   // ===== 卡片目录 =====
   container.querySelectorAll(".report-card").forEach(card => {
-    const h2s = card.querySelectorAll(".report-body h2");
+    const body = card.querySelector(".report-body");
+    if (!body) return;
+    const h2s = body.querySelectorAll("h2");
     if (h2s.length < 2) return;
     const toc = document.createElement("div");
     toc.className = "report-toc";
-    h2s.forEach((h2, i) => {
+    h2s.forEach(h2 => {
       const link = document.createElement("a");
-      link.textContent = h2.textContent.replace("▾","").trim();
+      link.textContent = h2.textContent.trim();
       link.addEventListener("click", () => h2.scrollIntoView({behavior:"smooth",block:"start"}));
       toc.appendChild(link);
     });
-    card.querySelector(".report-body").insertBefore(toc, card.querySelector(".report-body").firstChild);
+    body.insertBefore(toc, body.firstChild);
   });
 
   // ===== 搜索高亮 =====
