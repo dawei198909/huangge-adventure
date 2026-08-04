@@ -551,7 +551,7 @@ function renderMobileDates() {
     const entries = byMonth[m];
     const uniqueDates = [...new Set(entries.map(r => r.date))].sort().reverse();
     const totalArticles = entries.length;
-    const isOpen = openMonths[m] !== false ? true : false;
+    const isOpen = openMonths[m] === true;
 
     return `<div class="month-group">
       <div class="month-head ${isOpen ? "open" : ""}" data-month="${m}">
