@@ -103,52 +103,79 @@ body {
 
 /* 侧边日历 */
 .sidebar {
-  width: 220px; flex-shrink: 0;
+  width: 280px; flex-shrink: 0;
   border-right: 1px solid var(--card-border);
-  padding: 20px 16px;
+  padding: 18px 14px;
   background: var(--bg-soft);
   position: sticky; top: 62px;
   height: calc(100vh - 62px);
   overflow-y: auto;
+  display: flex; flex-direction: column;
 }
-.sidebar h3 {
-  font-size: 13px; color: var(--text-soft);
-  text-transform: uppercase; letter-spacing: 1px;
-  margin-bottom: 12px;
+.calendar-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
 }
-.date-list { list-style: none; }
-.date-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 10px; border-radius: 10px;
-  cursor: pointer; font-size: 14px; color: var(--text);
+.calendar-header .month-label {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  user-select: none;
+}
+.calendar-header .nav-btn {
+  width: 28px; height: 28px; border: none; border-radius: 8px;
+  background: var(--card); color: var(--text);
+  cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;
   transition: background 0.2s;
-  margin-bottom: 2px;
 }
-.date-item:hover { background: var(--card); }
-.date-item.active { background: var(--accent-soft); font-weight: 600; }
-.date-item .dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  flex-shrink: 0;
+.calendar-header .nav-btn:hover { background: var(--accent-soft); }
+.calendar-weekdays {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  text-align: center; font-size: 11px; color: var(--text-soft);
+  margin-bottom: 4px; font-weight: 600;
 }
-.date-item .dot.money { background: var(--tag-money); }
-.date-item .dot.frontier { background: var(--tag-frontier); }
-.date-item .dot.both {
-  background: linear-gradient(135deg, var(--tag-money) 50%, var(--tag-frontier) 50%);
+.calendar-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  gap: 2px; flex: 1;
 }
-.date-item .count { margin-left: auto; font-size: 12px; color: var(--text-soft); }
-.date-item .today-tag {
-  font-size: 10px; font-weight: 600; color: #fff;
-  background: #5d9b6f; border-radius: 8px;
-  padding: 1px 7px; margin-left: 4px;
+.calendar-cell {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; font-size: 13px; color: var(--text);
+  cursor: pointer; position: relative; transition: background 0.15s;
+  user-select: none;
 }
-@keyframes pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(93, 155, 111, 0.5); }
-  50% { box-shadow: 0 0 0 5px rgba(93, 155, 111, 0); }
+.calendar-cell:hover { background: var(--card); }
+.calendar-cell.empty { cursor: default; }
+.calendar-cell.empty:hover { background: transparent; }
+.calendar-cell.today {
+  background: var(--accent); color: #fff; font-weight: 700;
 }
-.dot.pulse {
-  background: #5d9b6f !important;
-  animation: pulse 2s infinite;
+.calendar-cell.has-report::after {
+  content: ""; position: absolute;
+  bottom: 5px; left: 50%; transform: translateX(-50%);
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--accent);
 }
+.calendar-cell.today.has-report::after { background: #fff; }
+.calendar-cell.active {
+  box-shadow: inset 0 0 0 2px var(--accent);
+  font-weight: 700;
+}
+.calendar-cell.today.active {
+  box-shadow: inset 0 0 0 2px #fff;
+}
+.calendar-cell .tooltip {
+  display: none; position: absolute;
+  bottom: 110%; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: var(--bg);
+  padding: 3px 8px; border-radius: 6px;
+  font-size: 11px; white-space: nowrap;
+  pointer-events: none; z-index: 10;
+}
+.calendar-cell:hover .tooltip { display: block; }
+.calendar-legend {
+  margin-top: 12px; font-size: 11px; color: var(--text-soft);
+  display: flex; align-items: center; gap: 6px;
+}
+.calendar-legend .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 
 /* 内容区 */
 .content { flex: 1; padding: 32px 36px; max-width: 920px; }
@@ -257,10 +284,13 @@ mark { background: #f2d98c; color: #3a342a; padding: 0 2px; border-radius: 3px; 
   .sidebar {
     width: 100%; position: static; height: auto;
     border-right: none; border-bottom: 1px solid var(--card-border);
-    max-height: 200px;
+    max-height: none; padding: 12px;
+    flex-direction: row; flex-wrap: wrap; gap: 8px; align-items: flex-start;
   }
-  .date-list { display: flex; flex-wrap: wrap; gap: 4px; }
-  .date-item { font-size: 13px; padding: 5px 8px; }
+  .calendar-header { width: 100%; }
+  .calendar-grid { grid-template-columns: repeat(7, 1fr); gap: 1px; }
+  .calendar-cell { font-size: 11px; }
+
   .content { padding: 16px; }
   .report-card { padding: 18px; }
   .search-box { width: 140px; }
@@ -283,8 +313,18 @@ mark { background: #f2d98c; color: #3a342a; padding: 0 2px; border-radius: 3px; 
 
 <div class="main">
   <aside class="sidebar">
-    <h3>📅 按日期浏览</h3>
-    <ul class="date-list" id="dateList"></ul>
+    <div class="calendar-header">
+      <button class="nav-btn" id="prevMonth" title="上个月">◀</button>
+      <span class="month-label" id="monthLabel"></span>
+      <button class="nav-btn" id="nextMonth" title="下个月">▶</button>
+    </div>
+    <div class="calendar-weekdays">
+      <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+    </div>
+    <div class="calendar-grid" id="calendarGrid"></div>
+    <div class="calendar-legend">
+      <span class="dot"></span> 有日报
+    </div>
   </aside>
   <main class="content" id="content"></main>
 </div>
@@ -322,31 +362,56 @@ function highlightText(text, query) {
 }
 
 // ===== 渲染 =====
-function renderDates() {
-  const list = document.getElementById("dateList");
-  const dates = getDates();
-  const latestDate = dates[0];
-  const counts = {};
-  REPORTS.forEach(r => { counts[r.date] = (counts[r.date] || 0) + 1; });
-  list.innerHTML = dates.map(d => {
-    const info = REPORTS.reduce((acc, r) => {
-      if (r.date === d) { acc[r.type] = true; }
-      return acc;
-    }, {});
-    const dotClass = (info.money && info.frontier) ? "both" : (info.money ? "money" : "frontier");
-    const isLatest = d === latestDate;
-    return `<li class="date-item ${currentDate === d ? "active" : ""} ${isLatest ? "today" : ""}" data-date="${d}">
-      <span class="dot ${dotClass} ${isLatest ? "pulse" : ""}"></span>${d}
-      ${isLatest ? '<span class="today-tag">今天</span>' : ""}
-      <span class="count">${counts[d] || 0}</span>
-    </li>`;
-  }).join("");
-  list.querySelectorAll(".date-item").forEach(el => {
-    el.addEventListener("click", () => {
-      currentDate = el.dataset.date;
-      renderDates();
-      renderContent();
-    });
+// ===== 日历状态 =====
+let calYear, calMonth;
+
+function getReportDates() {
+  const set = new Set();
+  REPORTS.forEach(r => set.add(r.date));
+  return set;
+}
+
+function renderCalendar() {
+  const grid = document.getElementById("calendarGrid");
+  const label = document.getElementById("monthLabel");
+  const reportDates = getReportDates();
+  const today = new Date().toISOString().slice(0, 10);
+  
+  const firstDay = new Date(calYear, calMonth, 1);
+  const firstWeekday = firstDay.getDay(); // 0=Sun
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  
+  label.textContent = `${calYear}年${calMonth + 1}月`;
+  
+  const cells = [];
+  // Empty cells before first day
+  for (let i = 0; i < firstWeekday; i++) {
+    cells.push(`<div class="calendar-cell empty"></div>`);
+  }
+  // Day cells
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const hasReport = reportDates.has(dateStr);
+    const isToday = dateStr === today;
+    const isActive = dateStr === currentDate;
+    cells.push(
+      `<div class="calendar-cell${hasReport ? " has-report" : ""}${isToday ? " today" : ""}${isActive ? " active" : ""}"
+           data-date="${dateStr}" data-has="${hasReport ? 1 : 0}">
+         ${day}
+         <span class="tooltip">${dateStr}</span>
+       </div>`
+    );
+  }
+  grid.innerHTML = cells.join("");
+  
+  grid.querySelectorAll(".calendar-cell:not(.empty)").forEach(el => {
+    if (el.dataset.has === "1") {
+      el.addEventListener("click", () => {
+        currentDate = el.dataset.date;
+        renderCalendar();
+        renderContent();
+      });
+    }
   });
 }
 
@@ -407,7 +472,7 @@ document.getElementById("searchBox").addEventListener("input", e => {
   searchTimer = setTimeout(() => {
     searchQuery = e.target.value.trim();
     if (searchQuery) currentDate = null;  // 搜索时忽略日期过滤
-    renderDates();
+    renderCalendar();
     renderContent();
   }, 250);
 });
@@ -427,10 +492,25 @@ document.getElementById("themeToggle").addEventListener("click", () => {
     document.documentElement.dataset.theme = "dark";
     document.getElementById("themeToggle").textContent = "☀️ 浅色";
   }
+  const today = new Date();
+  calYear = today.getFullYear();
+  calMonth = today.getMonth();
   const dates = getDates();
   if (dates.length > 0) currentDate = dates[0];  // 默认最新一天
-  renderDates();
+  renderCalendar();
   renderContent();
+
+  // 月历翻页
+  document.getElementById("prevMonth").addEventListener("click", () => {
+    calMonth--;
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+    renderCalendar();
+  });
+  document.getElementById("nextMonth").addEventListener("click", () => {
+    calMonth++;
+    if (calMonth > 11) { calMonth = 0; calYear++; }
+    renderCalendar();
+  });
 
   // 回到顶部按钮显隐
   const backBtn = document.getElementById("backToTop");
