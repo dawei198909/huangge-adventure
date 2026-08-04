@@ -507,19 +507,23 @@ function renderContent() {
     const keywords = searchQuery.trim().split(/\s+/).filter(k => k.length > 0);
     if (keywords.length > 0) {
       const highlightInNode = (node) => {
-        if (node.nodeType === 3) { // text node
+        if (node.nodeType === 3) {
           let txt = node.textContent;
           let changed = false;
           keywords.forEach(kw => {
-            const re = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+            // 为高亮生成能跨空格匹配的正则
+            const chars = [...kw];
+            const reStr = chars.map(c => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s*");
+            const re = new RegExp(reStr, "gi");
             if (re.test(txt)) changed = true;
           });
           if (!changed) return;
           const span = document.createElement("span");
-          // Re-apply all keyword highlights sequentially
           let result = txt;
           keywords.forEach(kw => {
-            const re = new RegExp("(" + kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "gi");
+            const chars = [...kw];
+            const reStr = chars.map(c => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s*");
+            const re = new RegExp("(" + reStr + ")", "gi");
             result = result.replace(re, "<mark>$1</mark>");
           });
           span.innerHTML = result;
