@@ -2,8 +2,13 @@ name: AI日报自动生成
 
 on:
   schedule:
-    # UTC 22:00 = 北京时间 6:00
+    # UTC 时间。北京时间 = UTC + 8
+    # 22:00 UTC = 北京 6:00（主触发）
+    # 23:30 UTC = 北京 7:30（兜底1）
+    # 01:00 UTC = 北京 9:00（兜底2）
     - cron: '0 22 * * *'
+    - cron: '30 23 * * *'
+    - cron: '0 1 * * *'
   workflow_dispatch:  # 支持手动触发
 
 permissions:
@@ -12,7 +17,7 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - name: 检出仓库
         uses: actions/checkout@v4

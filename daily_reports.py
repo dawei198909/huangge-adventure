@@ -145,18 +145,30 @@ def git_push():
                 ["git", "remote", "set-url", "origin", f"https://x-access-token:{token}@github.com/{repo}.git"],
                 cwd=ARCHIVE, capture_output=True,
             )
-    cmds = [
-        ["git", "add", "index.html", "data.js", "reports/"],
-        ["git", "commit", "-m", f"更新 {datetime.now().strftime('%Y-%m-%d')}"],
-        ["git", "push", "origin", "main"],
-    ]
-    for cmd in cmds:
-        r = subprocess.run(cmd, cwd=ARCHIVE, capture_output=True, text=True, timeout=120)
-        out = (r.stdout + r.stderr).strip()
-        if r.returncode != 0 and "nothing to commit" not in out and "up to date" not in out and "Everything up-to-date" not in out:
-            log(f"  git {' '.join(cmd[:2])}: rc={r.returncode} {out[:300]}")
+    # 顺序：先 add + commit（本地提交），再 pull --rebase（合入远程），最后 push
+    add = subprocess.run(["git", "add", "-A"], cwd=ARCHIVE, capture_output=True, text=True, timeout=60)
+    commit = subprocess.run(["git", "commit", "-m", f"更新 {datetime.now().strftime('%Y-%m-%d')}"], cwd=ARCHIVE, capture_output=True, text=True, timeout=60)
+    if commit.returncode != 0 and "nothing to commit" not in (commit.stdout + commit.stderr):
+        log(f"  git commit: rc={commit.returncode} {(commit.stdout+commit.stderr).strip()[:200]}")
+    # pull --rebase（忽略错误：可能是首次/无远程）
+    pull = subprocess.run(["git", "pull", "--rebase", "origin", "main"], cwd=ARCHIVE, capture_output=True, text=True, timeout=120)
+    if pull.returncode != 0:
+        log(f"  git pull: rc={pull.returncode} {pull.stderr.strip()[:200]}")
+    push = subprocess.run(["git", "push", "origin", "main"], cwd=ARCHIVE, capture_output=True, text=True, timeout=120)
+    out = (push.stdout + push.stderr).strip()
+    if push.returncode != 0 and "rejected" in out:
+        log("  push 被拒绝，再 pull 一次后重试")
+        subprocess.run(["git", "pull", "--rebase", "origin", "main"], cwd=ARCHIVE, capture_output=True, text=True, timeout=120)
+        r2 = subprocess.run(["git", "push", "origin", "main"], cwd=ARCHIVE, capture_output=True, text=True, timeout=120)
+        out2 = (r2.stdout + r2.stderr).strip()
+        if r2.returncode == 0 or "up-to-date" in out2 or "Everything" in out2:
+            log("  git push OK（重试成功）")
         else:
-            log(f"  git {' '.join(cmd[:2])} OK")
+            log(f"  git push: rc={r2.returncode} {out2[:300]}")
+    elif push.returncode == 0 or "up-to-date" in out or "Everything" in out:
+        log("  git push OK")
+    else:
+        log(f"  git push: rc={push.returncode} {out[:300]}")
 
 
 def main():
