@@ -11,6 +11,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+import urllib.parse
 from datetime import datetime
 from pathlib import Path
 
@@ -103,7 +104,14 @@ REPORT_SPECS = [
 每个案例包含：**背景**、**具体做法**（分步骤）、**收入情况**、**国内可复制性**（可行性星级+具体方案）、**一句话建议**
 ## 二、赚钱逻辑总结（表格：模式/代表案例/核心能力/国内可行性）
 ## 三、本周最可执行的赚钱方向
-用真实存在的海外案例（如 ShipFast、Marc Lou、Pieter Levels、AI 视频工厂等），不要虚构。不要用 web 搜索，直接用你的知识。""",
+## 四、信息来源
+在文末列出本日报所有信息来源，格式：
+- [来源名称1](https://真实链接)
+- [来源名称2](https://真实链接)
+要求：
+1. 每个案例必须对应至少 1 条真实来源链接（公司官网、创始人主页、权威媒体报道，如 TechCrunch、Product Hunt 等），**禁止编造 URL**，不确定就写官方主页域名
+2. 链接放在对应案例正文末尾和文末"信息来源"小节
+3. 用真实存在的海外案例（如 ShipFast、Marc Lou、Pieter Levels、AI 视频工厂等），不要虚构""",
     },
     {
         "filename": "AI应用场景日报_详细版_%Y%m%d.md",
@@ -116,7 +124,14 @@ REPORT_SPECS = [
 ## 二、近期 AI 工具/模型重要更新（表格：工具/更新内容/对应用场景的影响）
 ## 三、可复用的操作技巧（2-3个，带具体 prompt 或步骤）
 ## 四、本周最值得试的 AI 应用方向
-用真实案例，不要虚构。不要用 web 搜索，直接用你的知识。""",
+## 五、信息来源
+在文末列出本日报所有信息来源，格式：
+- [来源名称1](https://真实链接)
+- [来源名称2](https://真实链接)
+要求：
+1. 每个案例必须对应至少 1 条真实来源链接（公司官网、官方新闻稿、权威媒体报道），**禁止编造 URL**，不确定就写官方主页域名
+2. 链接放在对应案例正文末尾和文末"信息来源"小节
+3. 用真实案例，不要虚构""",
     },
     {
         "filename": "AI前沿情报日报_详细版_%Y%m%d.md",
@@ -128,9 +143,55 @@ REPORT_SPECS = [
 ## 二、重要模型/产品更新（表格）
 ## 三、政策与监管动态（2-3条）
 ## 四、机会与风险（表格）
-基于你的训练知识写真实存在的内容，不要虚构。不要用 web 搜索，直接用你的知识。""",
+## 五、信息来源
+在文末列出本日报所有信息来源，格式：
+- [来源名称1](https://真实链接)
+- [来源名称2](https://真实链接)
+要求：
+1. 每个趋势必须对应至少 1 条真实来源链接（公司官网、官方博客、权威媒体如 Reuters、TechCrunch），**禁止编造 URL**，不确定就写官方主页域名
+2. 链接放在对应趋势正文末尾和文末"信息来源"小节
+3. 基于你的训练知识写真实存在的内容，不要虚构""",
     },
 ]
+
+
+def shorten_url(url, api_key=None):
+    """用 tinyurl 免费 API 缩短链接，失败返回原链接"""
+    url = url.strip().rstrip(')').rstrip('。').rstrip('，')
+    if not url.startswith('http'):
+        return url
+    try:
+        req = urllib.request.Request(
+            f"https://tinyurl.com/api-create.php?url={urllib.parse.quote(url, safe='')}",
+            headers={"User-Agent": "Mozilla/5.0"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            short = resp.read().decode('utf-8').strip()
+            if short.startswith('http') and len(short) < len(url):
+                return short
+    except Exception:
+        pass
+    return url
+
+
+def post_process_links(text):
+    """把日报里的长链接缩短，返回处理后的文本和链接数"""
+    import re as _re
+    url_pattern = _re.compile(r'(https?://[^\s)\]]+)')
+    links = _re.findall(url_pattern, text)
+    seen = {}
+    count = 0
+    for u in links:
+        clean = u.rstrip('。，；、')
+        if clean not in seen:
+            short = shorten_url(clean)
+            seen[clean] = short
+            if short != clean:
+                count += 1
+    for original, short in seen.items():
+        if short != original:
+            text = text.replace(original, short)
+    return text, count
 
 
 def git_push():
@@ -189,8 +250,10 @@ def main():
             log(f"生成: {fname}")
             user = spec["user"].format(date=date, date_cn=date_cn)
             content = call_llm(api_key, spec["system"], user)
+            # 缩短日报里的所有长链接
+            content, short_count = post_process_links(content)
             path.write_text(content + "\n", encoding="utf-8")
-            log(f"  ✅ 已写入 {len(content)} 字符")
+            log(f"  ✅ 已写入 {len(content)} 字符（缩短 {short_count} 个链接）")
             time.sleep(5)  # 避免限流
 
         log("更新网页并推送...")

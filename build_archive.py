@@ -334,6 +334,12 @@ body {
 .cal-dot.empty { background: transparent; cursor: default; }
 .cal-dot.empty:hover { transform: none; }
 .cal-dot.today { border: 2px solid var(--accent); }
+.cal-dot.selected {
+  outline: 3px solid var(--tag-apps);
+  outline-offset: 1px;
+  transform: scale(1.2);
+  z-index: 3;
+}
 .cal-dot.has-report.money { background: var(--tag-money); }
 .cal-dot.has-report.frontier { background: var(--tag-frontier); }
 .cal-dot.has-report.apps { background: var(--tag-apps); }
@@ -680,8 +686,9 @@ function renderCalendar() {
       const typeCls = info ? (info.apps ? "apps" : (info.money ? "money" : "frontier")) : "";
       const has = !!info;
       const isToday = ds === todayStr;
+      const isSelected = ds === currentDate;
       cur.push(
-        `<span class="cal-dot${has ? " has-report "+typeCls : ""}${isToday ? " today" : ""}"
+        `<span class="cal-dot${has ? " has-report "+typeCls : ""}${isToday ? " today" : ""}${isSelected ? " selected" : ""}"
               data-date="${ds}" data-has="${has ? 1 : 0}">
           <span class="tooltip">${ds}${has ? (info.money?" 💰":"")+(info.frontier?" 📡":"")+(info.apps?" 🔧":"") : ""}</span>
         </span>`
@@ -704,6 +711,7 @@ function renderCalendar() {
       renderCalendar();
       renderMobileDates();
       renderContent();
+      window.scrollTo({top: 0, behavior: "smooth"});  // 切换日期滚回顶部
     });
   });
 
@@ -776,6 +784,7 @@ function renderMobileDates() {
       renderMobileDates();
       renderCalendar();
       renderContent();
+      window.scrollTo({top: 0, behavior: "smooth"});  // 切换日期滚回顶部
     });
   });
 }
@@ -956,6 +965,7 @@ document.getElementById("typeTabs").addEventListener("click", e => {
   renderCalendar();
   renderMobileDates();
   renderContent();
+  window.scrollTo({top: 0, behavior: "smooth"});  // 切换类型滚回顶部
 });
 
 // ===== 初始化 =====
