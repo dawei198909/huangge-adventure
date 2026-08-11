@@ -225,6 +225,33 @@ body {
 .section-body { transition: max-height 0.3s ease, opacity 0.3s; overflow: hidden; }
 .section-body.hidden { max-height: 0; opacity: 0; }
 
+/* 信息来源折叠框 */
+.source-scroll {
+  max-height: 130px;
+  overflow-y: auto;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: var(--bg-soft);
+  margin: 8px 0;
+  transition: max-height 0.3s ease;
+}
+.source-scroll.open { max-height: none; }
+.source-scroll ul { margin: 0; padding-left: 20px; }
+.source-scroll li { margin: 4px 0; font-size: 13px; }
+.source-toggle {
+  display: inline-block;
+  margin: 6px 0 0 0;
+  padding: 4px 12px;
+  font-size: 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--text-soft);
+  cursor: pointer;
+}
+.source-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
 /* 分析层 — 金色左边框突出 */
 .section-body.insight {
   border-left: 3px solid #c99874;
@@ -726,6 +753,31 @@ function renderContent() {
       toc.appendChild(link);
     });
     body.insertBefore(toc, body.firstChild);
+  });
+
+  // ===== 信息来源折叠框：链接超过 3 个 → 可滚动小框 =====
+  container.querySelectorAll(".report-body h2").forEach(h2 => {
+    if (!h2.textContent.includes("信息来源")) return;
+    // 找 h2 后面的内容容器（可能是 section-body）
+    let box = h2.nextElementSibling;
+    while (box && !box.classList || (box && !box.classList.contains("section-body"))) box = box.nextElementSibling;
+    if (!box) return;
+    const links = box.querySelectorAll("a");
+    if (links.length <= 3) return;
+    // 包一层可滚动容器
+    const wrapper = document.createElement("div");
+    wrapper.className = "source-scroll";
+    box.parentNode.insertBefore(wrapper, box);
+    wrapper.appendChild(box);
+    // 加展开/收起按钮
+    const btn = document.createElement("button");
+    btn.className = "source-toggle";
+    btn.textContent = `▾ 展开全部（${links.length} 条）`;
+    btn.addEventListener("click", () => {
+      const open = wrapper.classList.toggle("open");
+      btn.textContent = open ? `▴ 收起（${links.length} 条）` : `▾ 展开全部（${links.length} 条）`;
+    });
+    wrapper.after(btn);
   });
 
   // ===== 搜索高亮 =====
