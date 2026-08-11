@@ -175,23 +175,8 @@ def shorten_url(url, api_key=None):
 
 
 def post_process_links(text):
-    """把日报里的长链接缩短，返回处理后的文本和链接数"""
-    import re as _re
-    url_pattern = _re.compile(r'(https?://[^\s)\]]+)')
-    links = _re.findall(url_pattern, text)
-    seen = {}
-    count = 0
-    for u in links:
-        clean = u.rstrip('。，；、')
-        if clean not in seen:
-            short = shorten_url(clean)
-            seen[clean] = short
-            if short != clean:
-                count += 1
-    for original, short in seen.items():
-        if short != original:
-            text = text.replace(original, short)
-    return text, count
+    """按黄哥指示：不用短链，全部保留原链接（短链服务在国内被墙，降低稳定性）"""
+    return text, 0
 
 
 def git_push():
