@@ -833,6 +833,16 @@ function renderContent() {
     if (!byDate[r.date]) byDate[r.date] = [];
     byDate[r.date].push(r);
   });
+
+  // ===== 按阅读习惯排序：同一天内停留久的板块排前面 =====
+  try {
+    const habit = JSON.parse(localStorage.getItem("aiBoardTime") || "{}");
+    Object.keys(byDate).forEach(d => {
+      if (byDate[d].length > 1) {
+        byDate[d].sort((a, b) => (habit[b.type] || 0) - (habit[a.type] || 0));
+      }
+    });
+  } catch (e) {}
   
   const dates = Object.keys(byDate).sort().reverse();
   container.innerHTML = dates.map(d => {
@@ -968,6 +978,84 @@ document.getElementById("typeTabs").addEventListener("click", e => {
   window.scrollTo({top: 0, behavior: "smooth"});  // 切换类型滚回顶部
 });
 
+// ===== 阅读习惯跟踪 =====
+let habitTimer = null;
+let currentViewType = null;
+
+function getHabit() {
+  try { return JSON.parse(localStorage.getItem("aiBoardTime") || "{}"); } catch (e) { return {}; }
+}
+
+// 每 2 秒：累加当前视口中心板块的停留时长
+function startHabitTracking() {
+  if (habitTimer) return;
+  habitTimer = setInterval(() => {
+    const card = getCenterCard();
+    if (!card || !card.dataset.type) return;
+    const habit = getHabit();
+    habit[card.dataset.type] = (habit[card.dataset.type] || 0) + 2;
+    try { localStorage.setItem("aiBoardTime", JSON.stringify(habit)); } catch (e) {}
+  }, 2000);
+}
+
+// 滚动联动高亮 + 记录位置（节流 300ms）
+function trackScroll() {
+  let ticking = false;
+  window.addEventListener("scroll", () => {
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(() => {
+        const card = getCenterCard();
+        if (card && card.dataset.type) {
+          highlightTab(card.dataset.type);
+          // 记录阅读位置（仅当日）
+          try {
+            const today = new Date().toISOString().slice(0, 10);
+            localStorage.setItem("aiLastPos", JSON.stringify({
+              date: card.dataset.date,
+              scrollY: window.scrollY,
+              seenToday: today,
+            }));
+          } catch (e) {}
+        }
+        ticking = false;
+      });
+    }
+  });
+}
+
+function getCenterCard() {
+  const cards = document.querySelectorAll("#content .report-card");
+  if (!cards.length) return null;
+  const mid = window.innerHeight / 2;
+  let best = null, bestDist = Infinity;
+  cards.forEach(c => {
+    const r = c.getBoundingClientRect();
+    const center = r.top + r.height / 2;
+    const dist = Math.abs(center - mid);
+    if (dist < bestDist) { bestDist = dist; best = c; }
+  });
+  return best;
+}
+
+// 高亮顶部对应类型标签（联动）
+function highlightTab(type) {
+  document.querySelectorAll(".type-tab").forEach(t => {
+    t.classList.toggle("active", t.dataset.type === type);
+  });
+}
+
+// 恢复上次阅读位置（仅当天有效）
+function restorePosition() {
+  try {
+    const pos = JSON.parse(localStorage.getItem("aiLastPos") || "{}");
+    const today = new Date().toISOString().slice(0, 10);
+    if (pos.seenToday === today && pos.date && typeof pos.scrollY === "number") {
+      setTimeout(() => window.scrollTo({top: pos.scrollY, behavior: "auto"}), 300);
+    }
+  } catch (e) {}
+}
+
 // ===== 初始化 =====
 (function init() {
   const today = new Date();
@@ -980,12 +1068,16 @@ document.getElementById("typeTabs").addEventListener("click", e => {
 
   // 默认视图自动检测：如果当天只有一种类型，自动高亮对应标签
   const todayReports = REPORTS.filter(r => r.date === dates[0]);
-  const todayTypes = [...new Set(todayReports.map(r => r.type))];
-  if (todayTypes.length === 1) {
+  const todayTypes = [...new Set(todayReports.map(r => r.type))];  if (todayTypes.length === 1) {
     currentType = todayTypes[0];
     const tab = document.querySelector(`.type-tab[data-type="${currentType}"]`);
     if (tab) tab.classList.add("active");
   }
+
+  // ===== 阅读习惯跟踪 + 滚动联动 + 位置恢复 =====
+  startHabitTracking();
+  trackScroll();
+  restorePosition();
 
   // 月历翻页
   document.getElementById("prevMonth").addEventListener("click", () => {
