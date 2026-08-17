@@ -3,12 +3,12 @@ name: AI日报自动生成
 on:
   schedule:
     # UTC 时间。北京时间 = UTC + 8
-    # 22:00 UTC = 北京 6:00（主触发）
-    # 23:30 UTC = 北京 7:30（兜底1）
-    # 01:00 UTC = 北京 9:00（兜底2）
-    - cron: '0 22 * * *'
-    - cron: '30 23 * * *'
-    - cron: '0 1 * * *'
+    # 16:00 UTC = 北京 0:00（主触发，凌晨开始生成，7点前必上线）
+    # 17:30 UTC = 北京 1:30（兜底1）
+    # 19:00 UTC = 北京 3:00（兜底2，最晚3点开始，6点前完成）
+    - cron: '0 16 * * *'
+    - cron: '30 17 * * *'
+    - cron: '0 19 * * *'
   workflow_dispatch:  # 支持手动触发
 
 permissions:
@@ -17,7 +17,7 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 300
     steps:
       - name: 检出仓库
         uses: actions/checkout@v4
@@ -33,4 +33,5 @@ jobs:
           ARCHIVE_DIR: ${{ github.workspace }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          TZ: Asia/Shanghai
         run: python3 daily_reports.py
