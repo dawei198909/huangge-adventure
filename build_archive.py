@@ -53,9 +53,11 @@ def scan_reports():
     sources = [REPORTS_DIR] if REPORTS_DIR.exists() else []
     sources.append(DESKTOP)  # 兼容旧文件
     for src_dir in sources:
-        for f in sorted(src_dir.glob("*日报*.md")):
+        for f in sorted(src_dir.glob("*.md")):
             name = f.name
             if "测试" in name:
+                continue
+            if not any(k in name for k in ["日报", "雷达", "深潜", "避坑", "工具箱", "赚钱", "前沿", "应用", "机会", "行业", "工具", "案例"]):
                 continue
             date_str, date_obj = parse_date(name)
             rtype = classify(name)
