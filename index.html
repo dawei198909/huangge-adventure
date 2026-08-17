@@ -20,6 +20,10 @@
   --tag-money: #b07d3e;
   --tag-frontier: #5d7b6f;
   --tag-apps: #4a7fb5;
+  --tag-radar: #c0392b;      /* 机会雷达 - 醒目红 */
+  --tag-industry: #8e44ad;   /* 行业深潜 - 紫 */
+  --tag-pitfall: #e67e22;    /* 避坑指南 - 橙 */
+  --tag-toolbox: #16a085;    /* 工具箱 - 青绿 */
 }
 
 [data-theme="dark"] {
@@ -158,6 +162,10 @@ body {
 .cal-dot.has-report.money { background: var(--tag-money); }
 .cal-dot.has-report.frontier { background: var(--tag-frontier); }
 .cal-dot.has-report.apps { background: var(--tag-apps); }
+.cal-dot.has-report.radar { background: var(--tag-radar); }
+.cal-dot.has-report.industry { background: var(--tag-industry); }
+.cal-dot.has-report.pitfall { background: var(--tag-pitfall); }
+.cal-dot.has-report.toolbox { background: var(--tag-toolbox); }
 .cal-dot.has-report.today { opacity: 1; box-shadow: 0 0 5px rgba(176,125,62,0.4); }
 
 /* 未读标记 */
@@ -196,6 +204,10 @@ body {
 .report-card.money { border-left: 4px solid var(--tag-money); }
 .report-card.frontier { border-left: 4px solid var(--tag-frontier); }
 .report-card.apps { border-left: 4px solid var(--tag-apps); }
+.report-card.radar { border-left: 4px solid var(--tag-radar); }
+.report-card.industry { border-left: 4px solid var(--tag-industry); }
+.report-card.pitfall { border-left: 4px solid var(--tag-pitfall); }
+.report-card.toolbox { border-left: 4px solid var(--tag-toolbox); }
 .report-head {
   display: flex; align-items: center; gap: 12px;
   margin-bottom: 0; flex-wrap: wrap;
@@ -209,6 +221,10 @@ body {
 .type-badge.money { background: var(--tag-money); }
 .type-badge.frontier { background: var(--tag-frontier); }
 .type-badge.apps { background: var(--tag-apps); }
+.type-badge.radar { background: var(--tag-radar); }
+.type-badge.industry { background: var(--tag-industry); }
+.type-badge.pitfall { background: var(--tag-pitfall); }
+.type-badge.toolbox { background: var(--tag-toolbox); }
 .report-head .report-date { font-size: 18px; font-weight: 700; }
 .report-head .report-file { font-size: 12px; color: var(--text-soft); margin-left: auto; }
 
@@ -316,6 +332,10 @@ body {
   .date-item .dot.money { background: var(--tag-money); }
   .date-item .dot.frontier { background: var(--tag-frontier); }
   .date-item .dot.apps { background: var(--tag-apps); }
+  .date-item .dot.radar { background: var(--tag-radar); }
+  .date-item .dot.industry { background: var(--tag-industry); }
+  .date-item .dot.pitfall { background: var(--tag-pitfall); }
+  .date-item .dot.toolbox { background: var(--tag-toolbox); }
   .date-item .dot.both { background: linear-gradient(135deg, var(--tag-money) 50%, var(--tag-frontier) 50%); }
   .date-item .label { flex: 1; }
   .date-item .today-tag { font-size: 10px; color: #4a9; font-weight: 600; }
@@ -432,6 +452,10 @@ mark { background: #f2d98c; color: #3a342a; padding: 0 2px; border-radius: 3px; 
       <button class="type-tab" data-type="money">💰 赚钱</button>
       <button class="type-tab" data-type="apps">🔧 应用</button>
       <button class="type-tab" data-type="frontier">📡 前沿</button>
+      <button class="type-tab" data-type="radar">🎯 机会</button>
+      <button class="type-tab" data-type="industry">🏭 行业</button>
+      <button class="type-tab" data-type="pitfall">⚠️ 避坑</button>
+      <button class="type-tab" data-type="toolbox">🧰 工具</button>
     </div>
     <input class="search-box" id="searchBox" type="text" placeholder="🔍 搜索日报内容...">
     <button class="search-btn" id="searchBtn">搜索</button>
@@ -525,14 +549,14 @@ function renderCalendar() {
     for (let day = 1; day <= daysInMonth; day++) {
       const ds = `${b.y}-${String(b.mo).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
       const info = reportDates[ds];
-      const typeCls = info ? (info.apps ? "apps" : (info.money ? "money" : "frontier")) : "";
+      const typeCls = info ? (info.apps ? "apps" : (info.money ? "money" : (info.frontier ? "frontier" : (info.radar ? "radar" : (info.industry ? "industry" : (info.pitfall ? "pitfall" : "toolbox")))))) : "";
       const has = !!info;
       const isToday = ds === todayStr;
       const isSelected = ds === currentDate;
       cur.push(
         `<span class="cal-dot${has ? " has-report "+typeCls : ""}${isToday ? " today" : ""}${isSelected ? " selected" : ""}"
               data-date="${ds}" data-has="${has ? 1 : 0}">
-          <span class="tooltip">${ds}${has ? (info.money?" 💰":"")+(info.frontier?" 📡":"")+(info.apps?" 🔧":"") : ""}</span>
+          <span class="tooltip">${ds}${has ? (info.money?" 💰":"")+(info.frontier?" 📡":"")+(info.apps?" 🔧":"")+(info.radar?" 🎯":"")+(info.industry?" 🏭":"")+(info.pitfall?" ⚠️":"")+(info.toolbox?" 🧰":"") : ""}</span>
         </span>`
       );
       if (cur.length === 7) { rows.push(`<div class="cal-week-row">${cur.join("")}</div>`); cur = []; }
@@ -689,7 +713,15 @@ function renderContent() {
   const dates = Object.keys(byDate).sort().reverse();
   container.innerHTML = dates.map(d => {
     return byDate[d].map(r => {
-      const badgeText = r.type === "money" ? "💰 赚钱案例" : (r.type === "frontier" ? "📡 前沿情报" : "🔧 应用场景");
+      const badgeText = {
+        money: "💰 赚钱案例",
+        apps: "🔧 应用场景",
+        frontier: "📡 前沿情报",
+        radar: "🎯 机会雷达",
+        industry: "🏭 行业深潜",
+        pitfall: "⚠️ 避坑指南",
+        toolbox: "🧰 工具箱",
+      }[r.type] || r.type;
       return `
       <article class="report-card ${r.type}" data-date="${r.date}" data-type="${r.type}">
         <div class="report-head">
