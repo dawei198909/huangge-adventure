@@ -12,8 +12,15 @@ import sys
 import time
 import urllib.request
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
+
+# 统一使用北京时间（北京 = UTC+8），避免云端服务器 UTC 时区导致日期错位
+BEIJING_TZ = timezone(timedelta(hours=8))
+
+def now_beijing():
+    """返回北京时间（无论服务器时区）"""
+    return datetime.now(BEIJING_TZ)
 
 ARCHIVE = Path(os.environ.get("ARCHIVE_DIR", str(Path.home() / "Desktop" / "AI日报档案")))
 REPORTS = ARCHIVE / "reports"
@@ -24,7 +31,7 @@ MODEL = "deepseek-chat"  # DeepSeek V3
 
 
 def log(msg):
-    line = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}"
+    line = f"[{now_beijing().strftime('%Y-%m-%d %H:%M:%S')}] {msg}"
     print(line)
     try:
         with open(LOG, "a", encoding="utf-8") as f:
@@ -193,7 +200,7 @@ def git_push():
             )
     # 顺序：先 add + commit（本地提交），再 pull --rebase（合入远程），最后 push
     add = subprocess.run(["git", "add", "-A"], cwd=ARCHIVE, capture_output=True, text=True, timeout=60)
-    commit = subprocess.run(["git", "commit", "-m", f"更新 {datetime.now().strftime('%Y-%m-%d')}"], cwd=ARCHIVE, capture_output=True, text=True, timeout=60)
+    commit = subprocess.run(["git", "commit", "-m", f"更新 {now_beijing().strftime('%Y-%m-%d')}"], cwd=ARCHIVE, capture_output=True, text=True, timeout=60)
     if commit.returncode != 0 and "nothing to commit" not in (commit.stdout + commit.stderr):
         log(f"  git commit: rc={commit.returncode} {(commit.stdout+commit.stderr).strip()[:200]}")
     # pull --rebase（忽略错误：可能是首次/无远程）
@@ -221,7 +228,7 @@ def main():
     log("=== AI日报自动生成 开始 ===")
     try:
         api_key = get_api_key()
-        today = datetime.now()
+        today = now_beijing()
         date = today.strftime("%Y-%m-%d")
         date_cn = today.strftime("%Y年%m月%d日")
         REPORTS.mkdir(parents=True, exist_ok=True)
