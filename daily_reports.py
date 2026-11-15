@@ -22,9 +22,9 @@ def now_beijing():
     """返回北京时间（无论服务器时区）"""
     return datetime.now(BEIJING_TZ)
 
-ARCHIVE = Path(os.environ.get("ARCHIVE_DIR", str(Path.home() / "Desktop" / "AI日报档案")))
+ARCHIVE = Path(os.environ.get("ARCHIVE_DIR", str(Path(__file__).resolve().parent)))
 REPORTS = ARCHIVE / "reports"
-LOG = Path(os.environ.get("REPORT_LOG", str(Path.home() / "Desktop" / "AI日报档案" / "daily_report.log")))
+LOG = Path(os.environ.get("REPORT_LOG", str(ARCHIVE / "daily_report.log")))
 ENV_FILE = Path.home() / ".hermes" / ".env"
 API_URL = "https://api.deepseek.com/chat/completions"
 MODEL = "deepseek-chat"  # DeepSeek V3

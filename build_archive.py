@@ -11,7 +11,9 @@ from pathlib import Path
 from datetime import datetime
 
 DESKTOP = Path.home() / "Desktop"
-ARCHIVE_DIR = Path(os.environ.get("ARCHIVE_DIR", str(DESKTOP / "AI日报档案")))
+# 默认使用脚本自身所在目录（放哪都能跑），可用 ARCHIVE_DIR 环境变量覆盖（云端 = workspace）
+SCRIPT_DIR = Path(__file__).resolve().parent
+ARCHIVE_DIR = Path(os.environ.get("ARCHIVE_DIR", str(SCRIPT_DIR)))
 REPORTS_DIR = ARCHIVE_DIR / "reports"  # 日报源文件存这里
 OUTPUT_FILE = ARCHIVE_DIR / "index.html"
 
@@ -50,8 +52,8 @@ def classify(filename):
 def scan_reports():
     """扫描日报文件：先查报告目录，再查桌面（向后兼容）"""
     reports = []
+    # 只扫描项目内的 reports/ 目录（不再读桌面，避免把无关桌面文件卷进来）
     sources = [REPORTS_DIR] if REPORTS_DIR.exists() else []
-    sources.append(DESKTOP)  # 兼容旧文件
     for src_dir in sources:
         for f in sorted(src_dir.glob("*.md")):
             name = f.name
