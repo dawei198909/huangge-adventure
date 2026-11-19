@@ -3,16 +3,23 @@ name: AI日报自动生成
 on:
   schedule:
     # UTC 时间。北京时间 = UTC + 8
-    # 16:00 UTC = 北京 0:00（主触发，凌晨开始生成，7点前必上线）
-    # 17:30 UTC = 北京 1:30（兜底1）
-    # 19:00 UTC = 北京 3:00（兜底2，最晚3点开始，6点前完成）
-    - cron: '0 16 * * *'
-    - cron: '30 17 * * *'
-    - cron: '0 19 * * *'
+    # ── 7 点前上线保证方案 ──
+    # GitHub 定时任务实测延迟 4-8 小时，所以提前到北京 20:00 触发；
+    # 脚本在 20:00 后运行会自动生成「明天」的日报（见 daily_reports.py）
+    - cron: '0 12 * * *'    # 北京 20:00（主力：提前生成次日日报）
+    - cron: '0 16 * * *'    # 北京 0:00（兜底1）
+    - cron: '30 17 * * *'   # 北京 1:30（兜底2）
+    - cron: '0 19 * * *'    # 北京 3:00（兜底3，延迟后仍可在 7 点前完成）
+    - cron: '0 2 * * *'     # 北京 10:00（补救：前面全失败时兜底）
   workflow_dispatch:  # 支持手动触发
 
 permissions:
   contents: write
+
+# 同一时间只允许一个生成任务，避免并发跑导致 git 冲突
+concurrency:
+  group: daily-report
+  cancel-in-progress: false
 
 jobs:
   generate:

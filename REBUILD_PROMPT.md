@@ -122,17 +122,26 @@ today = 北京时间（必须显式 UTC+8，不能用服务器本地时间——
 
 ### 6.1 workflow 文件
 `.github/workflows/daily-report.yml`：
-- **3 个 cron 多点兜底**（GitHub schedule 有延迟，实测晚 10 小时）：
-  - `0 16 * * *`（UTC）= 北京 0:00 主触发
-  - `30 17 * * *`（UTC）= 北京 1:30 兜底 1
-  - `0 19 * * *`（UTC）= 北京 3:00 兜底 2
+- **5 个 cron 多点兜底 + 夜间提前生成**（GitHub schedule 实测延迟 4-8 小时）：
+  - `0 12 * * *`（UTC）= 北京 20:00 **主触发**（脚本自动生成"明天"的日报）
+  - `0 16 * * *`（UTC）= 北京 0:00 兜底 1
+  - `30 17 * * *`（UTC）= 北京 1:30 兜底 2
+  - `0 19 * * *`（UTC）= 北京 3:00 兜底 3
+  - `0 2 * * *`（UTC）= 北京 10:00 补救（前面全失败时）
 - `workflow_dispatch` 手动触发
 - `permissions: contents: write`（才能 push）
+- `concurrency: {group: daily-report, cancel-in-progress: false}`（防并发跑导致 git 冲突）
 - `timeout-minutes: 300`（生成 4 份日报需 2-3 小时）
 - env: `DEEPSEEK_API_KEY`（secrets）、`ARCHIVE_DIR=github.workspace`、`TZ=Asia/Shanghai`
 
-### 6.2 为什么凌晨生成
-生成 4 份日报要 2-3 小时 → 0:00 开始 → 3:00 完成 → **7:00 前必上线**（用户硬性要求，不接受模糊时间）
+### 6.2 7:00 前上线保证（关键设计）
+**问题**：GitHub Actions schedule 会延迟 4-8 小时，若按北京 0:00 触发 → 实际 4:00-8:00 才开跑 → 生成 2-3 小时 → 8:00-11:00 才上线，做不到 7:00。
+
+**解法（双管齐下）**：
+1. **夜间提前触发**：cron 设在北京 20:00（UTC 12:00），延迟 4-8 小时后落在北京 0:00-4:00 开跑 → 3:00-7:00 完成 ✅
+2. **脚本自动切次日**：`daily_reports.py` 里 `if now_beijing().hour >= 20: today += 1 day` —— 夜间运行就生成**明天**的日报，保证日期正确
+3. 多点 cron + `path.exists()` 跳过逻辑：谁先成功算谁，不重复生成
+4. 用户硬性要求：**每天 7:00 必须能看到当天日报**，不接受"上午/中午前"这类模糊时间
 
 ### 6.3 密钥
 GitHub Secret 名**必须精确**：`DEEPSEEK_API_KEY`（全大写+下划线）。指导用户创建时必须先给确切名字，否则用户自起名 → 工作流秒失败

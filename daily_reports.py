@@ -295,6 +295,12 @@ def main():
     try:
         api_key = get_api_key()
         today = now_beijing()
+        # 【7点前上线保证】GitHub 定时任务实测延迟 4-8 小时。
+        # 北京时间 20:00 之后运行 → 直接生成"明天"的日报，这样即使延迟到凌晨跑，
+        # 生成完（2-3小时）也能在次日 7:00 前上线。
+        if today.hour >= 20:
+            today = today + timedelta(days=1)
+            log(f"夜间运行 → 生成次日报纸: {today.strftime('%Y-%m-%d')}")
         date = today.strftime("%Y-%m-%d")
         date_cn = today.strftime("%Y年%m月%d日")
         REPORTS.mkdir(parents=True, exist_ok=True)
